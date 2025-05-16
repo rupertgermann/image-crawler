@@ -1,12 +1,16 @@
 # Progress Update - 2025-05-17
 
 ## Latest Changes
-- Implemented correct max downloads limit behavior across all crawler sources
+- Fixed max downloads/files limit behavior in both web and local modes
+- Created a totalDownloadLimit property in PlaywrightCrawler to enforce a strict limit across all sources
+- Updated LocalCrawler to properly respect the max files limit and stop scanning once the limit is reached
+- Added tracking of processed vs. copied files in local mode for better reporting
+- Added --max-downloads as an alias for --max-files in local mode for consistency
 - Changed default max downloads from 100 to 50 in the config
 - Updated interactive mode to use config values instead of hardcoded values
-- Added better progress reporting during downloads
-- Improved coordination between multiple image sources to respect the overall download limit
-- Updated README to reflect the new default max downloads value
+- Added better progress reporting during downloads with a centralized trackProgress utility
+- Improved final reporting to show downloads per source and overall status
+- Updated README to document the new options and behavior
 
 # Progress Update - 2025-05-16
 

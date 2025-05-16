@@ -12,6 +12,10 @@ const __dirname = path.dirname(__filename);
 
 class LocalCrawler {
   constructor(options = {}) {
+    // Get default maxFiles from config if available
+    const config = configManager.getConfig() || {};
+    const defaultMaxFiles = config.maxDownloads || 50;
+    
     this.options = {
       sourceDir: options.sourceDir || configManager.getPlatformSettings().defaultScanPath,
       outputDir: options.outputDir || pathUtils.getDefaultDownloadDir(),
@@ -19,14 +23,17 @@ class LocalCrawler {
       minHeight: options.minHeight || 600,
       minFileSize: options.minFileSize || 0,
       fileTypes: options.fileTypes || ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-      maxFiles: options.maxFiles || Number.MAX_SAFE_INTEGER,
+      maxFiles: options.maxFiles || defaultMaxFiles,
       preserveStructure: options.preserveStructure === true, // Default to flat structure
       ...options
     };
 
     this.fileCount = 0;
+    this.processedCount = 0; // Track total files processed, not just copied
     this.skippedFiles = 0;
     this.errorFiles = 0;
+    
+    Logger.info(`Maximum file limit set to: ${this.options.maxFiles} files`);
   }
 
   /**
@@ -69,11 +76,21 @@ class LocalCrawler {
       Logger.info(`Scanning directory: ${this.options.sourceDir}`);
       await this.scanDirectory(this.options.sourceDir);
 
-      Logger.success(`Crawling completed. Files processed: ${this.fileCount}, skipped: ${this.skippedFiles}, errors: ${this.errorFiles}`);
+      // Report on the results
+      if (this.fileCount < this.options.maxFiles) {
+        Logger.warn(`Only copied ${this.fileCount}/${this.options.maxFiles} files`);
+        Logger.info('This may be because not enough files matched your criteria (size/dimensions/type).');
+      } else {
+        Logger.info(`Successfully copied exactly ${this.fileCount} files as requested`);
+      }
+      
+      Logger.success(`Crawling completed. Files processed: ${this.processedCount}, copied: ${this.fileCount}, skipped: ${this.skippedFiles}, errors: ${this.errorFiles}`);
       return {
-        total: this.fileCount,
+        processed: this.processedCount,
+        copied: this.fileCount,
         skipped: this.skippedFiles,
-        errors: this.errorFiles
+        errors: this.errorFiles,
+        maxFiles: this.options.maxFiles
       };
     } catch (error) {
       Logger.error('Error during crawling:', error);
@@ -87,12 +104,18 @@ class LocalCrawler {
    */
   async scanDirectory(dir) {
     try {
+      // If we've already reached the max files, don't scan further
+      if (this.fileCount >= this.options.maxFiles) {
+        return;
+      }
+      
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
+        // Check if we've reached the limit before processing each entry
         if (this.fileCount >= this.options.maxFiles) {
-          Logger.info('Maximum file limit reached, stopping scan');
-          break;
+          Logger.info(`Maximum file limit of ${this.options.maxFiles} reached, stopping scan`);
+          return;
         }
 
         const fullPath = path.join(dir, entry.name);
@@ -100,6 +123,14 @@ class LocalCrawler {
         if (entry.isDirectory()) {
           await this.scanDirectory(fullPath);
         } else if (entry.isFile()) {
+          // Track total files processed regardless of whether they're copied
+          this.processedCount++;
+          
+          // Log progress for every 100 files processed
+          if (this.processedCount % 100 === 0) {
+            Logger.info(`Processed ${this.processedCount} files, copied ${this.fileCount}/${this.options.maxFiles}...`);
+          }
+          
           await this.processFile(fullPath, dir);
         }
       }
@@ -168,12 +199,24 @@ class LocalCrawler {
         outputPath = newPath;
       }
 
+      // Check if we've reached the max files limit before copying
+      if (this.fileCount >= this.options.maxFiles) {
+        Logger.debug(`Skipping file ${filePath} as max limit of ${this.options.maxFiles} has been reached`);
+        return;
+      }
+      
       // Copy the file
       await fs.copy(filePath, outputPath);
       this.fileCount++;
       
-      if (this.fileCount % 100 === 0) {
-        Logger.info(`Processed ${this.fileCount} files...`);
+      // Log progress
+      if (this.fileCount % 5 === 0 || this.fileCount === this.options.maxFiles) {
+        Logger.info(`Copied ${this.fileCount}/${this.options.maxFiles} files...`);
+      }
+      
+      // If we've reached the limit, log it
+      if (this.fileCount >= this.options.maxFiles) {
+        Logger.info(`Maximum file limit of ${this.options.maxFiles} reached, stopping copy operations`);
       }
     } catch (error) {
       Logger.error(`Error processing file ${filePath}:`, error);

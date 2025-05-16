@@ -36,6 +36,7 @@ program
   .option('--min-height <pixels>', 'Minimum image height in pixels', parseInt)
   .option('--min-size <bytes>', 'Minimum file size in bytes (e.g., 100KB)', val => pathUtils.parseSize(val))
   .option('--max-files <count>', 'Maximum number of files to process', parseInt)
+  .option('--max-downloads <count>', 'Maximum number of files to process (alias for --max-files)', parseInt)
   .option('--preserve-structure', 'Preserve directory structure in output (default: flat)')
   .option('--select-drives', 'Interactively select drives (Windows only)')
   .option('--file-types <types>', 'Comma-separated list of file extensions to include', val => val.split(','))
@@ -107,9 +108,15 @@ program
         minWidth: options.minWidth,
         minHeight: options.minHeight,
         minFileSize: options.minSize,
-        maxFiles: options.maxFiles,
-        preserveStructure: options.preserveStructure
+        maxFiles: options.maxFiles || options.maxDownloads, // Use either option
+        preserveStructure: options.preserveStructure,
+        fileTypes: options.fileTypes
       };
+      
+      // Log the max files limit
+      if (crawlerOptions.maxFiles) {
+        Logger.info(`Maximum file limit set to: ${crawlerOptions.maxFiles} files`);
+      }
       Logger.debug('Crawler options:', JSON.stringify(crawlerOptions, null, 2));
       
       const crawler = new LocalCrawler(crawlerOptions);
