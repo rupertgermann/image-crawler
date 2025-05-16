@@ -1,5 +1,11 @@
 # Progress Update - 2025-05-16
 
+## Latest Changes
+- Changed the default folder selection method from native dialogs to CLI interface
+- Updated README to document environment variables and their usage
+- Made the application more consistent across different environments
+- Eliminated potential issues with native dialogs that might not be available in all contexts
+
 ## Features Implemented
 - Comprehensive automated testing setup using Jest (unit and integration tests)
 - Custom test utilities for file system, image generation, and console mocking

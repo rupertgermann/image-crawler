@@ -79,7 +79,7 @@ async function selectFolder(title = 'Select Folder', defaultPath = process.cwd()
   const isMac = platform() === 'darwin';
   const isWindows = platform() === 'win32';
   const isLinux = platform() === 'linux';
-  const useNativeDialog = process.env.USE_NATIVE_DIALOG !== 'false';
+  const useNativeDialog = process.env.USE_NATIVE_DIALOG === 'true';
 
   Logger.debug(`Starting folder selection dialog: ${title}`);
   Logger.debug(`Platform: ${isMac ? 'macOS' : isWindows ? 'Windows' : isLinux ? 'Linux' : 'Unknown'}`);

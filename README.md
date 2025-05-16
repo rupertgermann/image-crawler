@@ -81,6 +81,24 @@ image-crawler interactive
 
 Configuration is stored in `config.json` in the current working directory. The file is automatically created on first run.
 
+### Environment Variables
+
+The application supports the following environment variables:
+
+- `USE_NATIVE_DIALOG=true` - Enables native folder selection dialogs (CLI interface is used by default)
+
+Example usage:
+
+```bash
+USE_NATIVE_DIALOG=true node src/index.js local
+```
+
+Or when using the installed package:
+
+```bash
+USE_NATIVE_DIALOG=true image-crawler local
+```
+
 ## Development
 
 1. Clone the repository
