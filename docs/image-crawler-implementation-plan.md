@@ -14,101 +14,201 @@ A Node.js application that collects images either from local drives or via Googl
 - Duplicate checking
 
 ### 2.2 Web Image Collection
-- Google Images search integration
 - Search term generation
-- Image result parsing
-- Parallel download with rate limiting
+- Smart result filtering
+- Rate limiting
 - Error handling for failed downloads
 
-### 2.3 Configuration Options
-- Mode selection (local/web)
-- Max downloads limit
-- Minimum dimensions (with presets)
-  - Small: 640x480
-  - Medium: 1280x720
-  - Large: 1920x1080
-  - 4K: 3840x2160
-- Minimum file size (in KB)
-- Source directories (for local mode)
-- Search terms (for web mode)
-- Output directory
-- File naming convention
+## 3. Technical Specifications
 
-## 3. Technical Implementation
+### 3.1 Platform Support
+- **Operating Systems**: Windows 10/11, macOS 10.15+
+- **Node.js**: v18.0.0 or higher
+- **Package Manager**: npm or yarn
 
-### 3.1 Dependencies
-- `commander`: CLI interface
-- `fs-extra`: Enhanced file system operations
-- `sharp`: Image processing and validation
-- `puppeteer`: Web scraping
-- `chalk`: Colored console output
-- `progress`: Download progress bars
-- `yargs`: Command line argument parsing
-- `config`: Configuration management
-- `p-limit`: Concurrency control
+### 3.2 Dependencies
+```json
+{
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "cross-spawn": "^7.0.3",
+    "fs-extra": "^11.1.1",
+    "puppeteer": "^21.0.0",
+    "sharp": "^0.32.0",
+    "progress": "^2.0.3",
+    "inquirer": "^9.2.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0"
+  }
+}
+```
 
-### 3.2 Project Structure
+## 4. Project Structure
+
 ```
 image-crawler/
 ├── src/
-│   ├── index.js          # Main entry point
-│   ├── local-crawler.js  # Local filesystem crawler
-│   ├── web-crawler.js    # Google Images downloader
-│   └── utils/
-│       ├── config.js     # Configuration management
-│       ├── logger.js     # Logging utilities
-│       ├── validators.js # Input validation
-│       └── helpers.js    # Helper functions
-├── config/               # Configuration files
-│   └── default.json
+│   ├── index.js              # CLI entry point
+│   ├── modes/
+│   │   ├── local-crawler.js  # Local file system crawler
+│   │   └── web-crawler.js    # Web image downloader
+│   ├── utils/
+│   │   ├── platform.js       # OS-specific utilities
+│   │   ├── paths.js          # Cross-platform path handling
+│   │   ├── config.js         # Configuration management
+│   │   ├── logger.js         # Logging utilities
+│   │   └── validators.js     # Input validation
+│   └── types/               # Type definitions
+├── tests/
+│   ├── unit/
+│   └── integration/
 ├── .gitignore
+├── .eslintrc
 ├── package.json
 └── README.md
 ```
 
-### 3.3 Implementation Phases
+## 5. Implementation Phases
 
-#### Phase 1: Setup & Configuration
-- Initialize Node.js project
-- Set up project structure
-- Configure ESLint and Prettier
-- Create basic configuration system
+### Phase 1: Core Infrastructure (2 days)
+- [ ] Project setup and configuration
+- [ ] Cross-platform utilities
+- [ ] Logging system
+- [ ] Configuration management
 
-#### Phase 2: Local Crawler
-- Implement recursive directory scanning
-- Add file filtering by type and size
-- Add image dimension validation
-- Implement file copying with progress
+### Phase 2: Local Crawler (2 days)
+- [ ] Directory traversal
+- [ ] File filtering
+- [ ] Image processing
+- [ ] Progress reporting
 
-#### Phase 3: Web Crawler
-- Set up Puppeteer for web scraping
-- Implement Google Images search
-- Add result parsing and filtering
-- Implement parallel downloads with rate limiting
+### Phase 3: Web Crawler (3 days)
+- [ ] Google Images search
+- [ ] Result parsing
+- [ ] Download manager
+- [ ] Rate limiting
 
-#### Phase 4: CLI & Integration
-- Create command-line interface
-- Add command-line arguments
-- Implement help and usage information
-- Add error handling and user feedback
+### Phase 4: CLI & Integration (2 days)
+- [ ] Command interface
+- [ ] Error handling
+- [ ] User feedback
+- [ ] Testing
 
-#### Phase 5: Testing & Optimization
-- Write unit tests
-- Test with various inputs
-- Optimize performance
-- Add error recovery
+### Phase 5: Testing & Polish (2 days)
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Documentation
+- [ ] Performance optimization
 
-## 4. Error Handling
+## 6. Cross-Platform Considerations
+
+### 6.1 Path Handling
+- Use `path.join()` for all path operations
+- Handle drive letters (Windows) vs. mount points (macOS)
+- Normalize path separators
+
+### 6.2 File System
+- Use `fs-extra` for atomic operations
+- Handle permission differences
+- Case sensitivity awareness
+
+### 6.3 Browser Automation
+- Platform-specific browser paths
+- Headless mode configuration
+- GPU acceleration settings
+
+## 7. Configuration Options
+
+```javascript
+{
+  "maxDownloads": 100,
+  "minWidth": 800,
+  "minHeight": 600,
+  "minFileSize": "100KB",
+  "outputDir": "~/image-crawler/downloads",
+  "fileTypes": ["jpg", "jpeg", "png", "gif", "webp"],
+  "searchEngines": {
+    "google": {
+      "enabled": true,
+      "maxResults": 100,
+      "safeSearch": true
+    }
+  }
+}
+```
+
+## 8. CLI Commands
+
+```bash
+# Local mode
+node src/index.js local --source ~/Pictures --output ./downloads --min-width 800 --min-height 600
+
+# Web mode
+node src/index.js web --query "nature landscape" --max-downloads 50 --min-size 1MB
+
+# Interactive mode
+npm run dev
+```
+
+## 9. Testing Strategy
+
+### 9.1 Unit Tests
+- Path utilities
+- File operations
+- Validation logic
+
+### 9.2 Integration Tests
+- Full crawl operations
+- Web downloads
+- Configuration loading
+
+### 9.3 Manual Testing
+- Windows 10/11
+- macOS
+- Different permission levels
+
+## 10. Error Handling
+- Network failures
 - File system errors
-- Network errors
-- Invalid user input
+- Permission issues
+- Invalid inputs
 - Rate limiting
-- Memory management
 
-## 5. Future Enhancements
+## 11. Performance Considerations
+- Batch processing
+- Memory management
+- Parallel downloads
+- Caching
+
+## 12. Documentation
+- README with usage examples
+- Configuration reference
+- Troubleshooting guide
+- API documentation
+
+## 13. Future Enhancements
 - Support for more image sources
 - Advanced filtering options
-- Batch processing
+- GUI interface
+- Scheduled crawling
+- Duplicate image detection
+
+## 14. Risks & Mitigation
+- **Risk**: Google blocking requests
+  - **Mitigation**: Implement rate limiting and user-agent rotation
+- **Risk**: File system permission issues
+  - **Mitigation**: Graceful error handling and clear error messages
+- **Risk**: Large memory usage
+  - **Mitigation**: Stream processing and batch operations
+
+## 15. Success Metrics
+- Successful downloads
+- Error rates
+- Performance benchmarks
+- User feedback
 - GUI interface
 - Docker support
 
