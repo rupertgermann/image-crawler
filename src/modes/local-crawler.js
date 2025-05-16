@@ -43,8 +43,21 @@ class LocalCrawler {
         throw new Error(`Source directory is invalid: ${sourceValidation.message}`);
       }
 
-      // Ensure output directory exists
-      await pathUtils.ensureDir(this.options.outputDir);
+      // Validate output directory is defined
+      if (!this.options.outputDir) {
+        Logger.warn('Output directory is undefined, using default directory');
+        this.options.outputDir = path.join(process.cwd(), 'downloads');
+        Logger.info(`Using default output directory: ${this.options.outputDir}`);
+      }
+
+      try {
+        // Ensure output directory exists
+        Logger.debug(`Ensuring output directory exists: ${this.options.outputDir}`);
+        await pathUtils.ensureDir(this.options.outputDir);
+      } catch (error) {
+        Logger.error(`Failed to ensure directory exists: ${this.options.outputDir}`, error);
+        throw new Error(`Failed to create output directory: ${error.message}`);
+      }
 
       // Validate output directory is writable
       const outputValidation = await validators.validateWritable(this.options.outputDir);

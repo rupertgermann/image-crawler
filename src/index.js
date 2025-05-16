@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs-extra';
 import LocalCrawler from './modes/local-crawler.js';
 import WebCrawler from './modes/web-crawler.js';
 import configManager from './utils/config.js';
@@ -40,35 +41,67 @@ program
   .option('--file-types <types>', 'Comma-separated list of file extensions to include', val => val.split(','))
   .action(async (options) => {
     try {
+      Logger.info('Starting local mode...');
+      Logger.debug('Local mode options:', JSON.stringify(options, null, 2));
+      
+      Logger.debug('Initializing configuration...');
       await configManager.init();
+      Logger.debug('Configuration initialized successfully');
       
       // Handle interactive drive selection on Windows
       if (options.selectDrives && platform.isWindows) {
+        Logger.info('Starting drive selection on Windows...');
         await handleDriveSelection();
         return;
       }
 
       // Always use interactive folder selection for source
       try {
+        Logger.info('Starting interactive folder selection for source...');
         const defaultScanDir = pathUtils.getDefaultScanDir();
+        Logger.debug(`Default scan directory: ${defaultScanDir}`);
+        
         // If source was provided via CLI, use it as the default in the dialog
         const initialDir = options.source || defaultScanDir;
+        Logger.debug(`Using initial directory for dialog: ${initialDir}`);
+        
+        Logger.debug('Launching folder selection dialog...');
         options.source = await selectFolder('Select source folder', initialDir);
         Logger.info(`Selected source folder: ${options.source}`);
       } catch (error) {
-        Logger.warn('Source folder selection canceled, using default source folder');
+        Logger.warn('Source folder selection canceled or failed, using default source folder');
+        Logger.debug(`Error during folder selection: ${error.message}`);
         options.source = platform.isWindows ? 'C:\\' : pathUtils.getDefaultScanDir();
+        Logger.debug(`Using fallback source directory: ${options.source}`);
       }
 
       // Use output folder from CLI or config
       let outputDir = options.output;
       if (!outputDir) {
+        Logger.debug('No output directory specified, getting from config...');
         outputDir = pathUtils.getDefaultDownloadDir();
         Logger.info(`Using output folder from config: ${outputDir}`);
+      } else {
+        Logger.debug(`Using output directory from CLI: ${outputDir}`);
+      }
+      
+      // Validate output directory - ensure it's not undefined
+      if (!outputDir) {
+        Logger.warn('Output directory is undefined, using fallback directory');
+        outputDir = path.join(process.cwd(), 'downloads');
+        Logger.info(`Using fallback output directory: ${outputDir}`);
+        // Ensure the directory exists
+        try {
+          await fs.ensureDir(outputDir);
+        } catch (error) {
+          Logger.error(`Failed to create fallback output directory: ${error.message}`);
+          throw new Error('Failed to create output directory');
+        }
       }
 
       // Initialize and start the local crawler
-      const crawler = new LocalCrawler({
+      Logger.info('Initializing local crawler...');
+      const crawlerOptions = {
         sourceDir: options.source,
         outputDir,
         minWidth: options.minWidth,
@@ -76,11 +109,18 @@ program
         minFileSize: options.minSize,
         maxFiles: options.maxFiles,
         preserveStructure: options.preserveStructure
-      });
+      };
+      Logger.debug('Crawler options:', JSON.stringify(crawlerOptions, null, 2));
+      
+      const crawler = new LocalCrawler(crawlerOptions);
 
+      Logger.info('Starting local crawler...');
       await crawler.start();
+      Logger.info('Local crawler completed successfully.');
     } catch (error) {
-      Logger.error('Error in local mode:', error);
+      Logger.error('Error in local mode:', error.message);
+      Logger.debug('Error details:', error);
+      Logger.debug('Stack trace:', error.stack);
       process.exit(1);
     }
   });

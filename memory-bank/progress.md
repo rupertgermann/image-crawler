@@ -14,11 +14,19 @@
 - Enhanced CLI options to match implementation plan exactly
 - Updated README with comprehensive usage examples and option descriptions
 - Added context7-recommended best practices to implementation plan
+- Implemented interactive folder selection for source directories
+- Added CLI-based folder selection fallback for when native dialogs don't work
+- Enhanced config system to use default output directories
 
 ## Errors Encountered and Fixes
 - Linting errors in package.json (fixed trailing commas)
 - Directory creation errors for test/mocks/utils (resolved by creating directories before file writes)
 - Timeout/context deadline errors when editing large test files (mitigated by breaking up edits)
+- Fixed undefined output directory error in local mode by:
+  - Adding proper validation and fallbacks in the getDefaultDownloadDir function
+  - Ensuring the config system always returns valid paths
+  - Adding safeguards in the LocalCrawler class to handle undefined directories
+  - Implementing detailed logging to help diagnose path resolution issues
 - Jest configuration conflicts between package.json and jest.config.js (resolved by using a single config file)
 - ES modules compatibility issues with Jest (addressed by updating configuration files)
 

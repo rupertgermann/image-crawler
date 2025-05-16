@@ -51,24 +51,36 @@ export const pathExists = async (path) => {
 export const getDefaultDownloadDir = () => {
   try {
     const config = configManager.getConfig();
-    if (config) {
-      if (platform.isWindows) {
+    if (config && config.platformSpecific) {
+      // Check if the platform-specific config exists and has defaultOutputDir
+      if (platform.isWindows && config.platformSpecific.windows && config.platformSpecific.windows.defaultOutputDir) {
+        Logger.debug(`Using Windows config output dir: ${config.platformSpecific.windows.defaultOutputDir}`);
         return config.platformSpecific.windows.defaultOutputDir;
-      } else if (platform.isMac) {
+      } else if (platform.isMac && config.platformSpecific.darwin && config.platformSpecific.darwin.defaultOutputDir) {
+        Logger.debug(`Using macOS config output dir: ${config.platformSpecific.darwin.defaultOutputDir}`);
         return config.platformSpecific.darwin.defaultOutputDir;
-      } else {
+      } else if (config.platformSpecific.linux && config.platformSpecific.linux.defaultOutputDir) {
+        Logger.debug(`Using Linux config output dir: ${config.platformSpecific.linux.defaultOutputDir}`);
         return config.platformSpecific.linux.defaultOutputDir;
       }
     }
+    
+    // If we got here, the config exists but doesn't have the required path
+    Logger.debug('Config exists but platform-specific output directory is not defined');
   } catch (error) {
     Logger.warn('Could not get default download directory from config, using fallback', error);
   }
   
-  // Fallback if config is not available
+  // Fallback if config is not available or doesn't have the required path
+  let fallbackDir;
   if (platform.isWindows) {
-    return path.join(platform.homedir, 'Downloads', 'image-crawler');
+    fallbackDir = path.join(platform.homedir, 'Downloads', 'image-crawler');
+  } else {
+    fallbackDir = path.join(platform.homedir, 'Downloads', 'image-crawler');
   }
-  return path.join(platform.homedir, 'image-crawler');
+  
+  Logger.debug(`Using fallback output directory: ${fallbackDir}`);
+  return fallbackDir;
 };
 
 /**
@@ -78,27 +90,38 @@ export const getDefaultDownloadDir = () => {
 export const getDefaultScanDir = () => {
   try {
     const config = configManager.getConfig();
-    if (config) {
-      if (platform.isWindows) {
+    if (config && config.platformSpecific) {
+      // Check if the platform-specific config exists and has defaultScanPath
+      if (platform.isWindows && config.platformSpecific.windows && config.platformSpecific.windows.defaultScanPath) {
+        Logger.debug(`Using Windows config scan dir: ${config.platformSpecific.windows.defaultScanPath}`);
         return config.platformSpecific.windows.defaultScanPath;
-      } else if (platform.isMac) {
+      } else if (platform.isMac && config.platformSpecific.darwin && config.platformSpecific.darwin.defaultScanPath) {
+        Logger.debug(`Using macOS config scan dir: ${config.platformSpecific.darwin.defaultScanPath}`);
         return config.platformSpecific.darwin.defaultScanPath;
-      } else {
+      } else if (config.platformSpecific.linux && config.platformSpecific.linux.defaultScanPath) {
+        Logger.debug(`Using Linux config scan dir: ${config.platformSpecific.linux.defaultScanPath}`);
         return config.platformSpecific.linux.defaultScanPath;
       }
     }
+    
+    // If we got here, the config exists but doesn't have the required path
+    Logger.debug('Config exists but platform-specific scan directory is not defined');
   } catch (error) {
     Logger.warn('Could not get default scan directory from config, using fallback', error);
   }
   
-  // Fallback if config is not available
+  // Fallback if config is not available or doesn't have the required path
+  let fallbackDir;
   if (platform.isWindows) {
-    return 'C:\\';
+    fallbackDir = 'C:\\';
   } else if (platform.isMac) {
-    return path.join(platform.homedir, 'Pictures');
+    fallbackDir = path.join(platform.homedir, 'Pictures');
   } else {
-    return platform.homedir;
+    fallbackDir = platform.homedir;
   }
+  
+  Logger.debug(`Using fallback scan directory: ${fallbackDir}`);
+  return fallbackDir;
 };
 
 /**

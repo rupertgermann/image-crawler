@@ -8,6 +8,9 @@ We've successfully implemented the key components of the image crawler applicati
 - **CLI Interface**: Enhanced with commander.js, supporting both local and web crawling modes with comprehensive options
 - **Configuration Management**: Flexible configuration loading and saving with defaults
 - **Local Crawling**: Directory scanning with filtering by size, dimensions, and file types
+  - Added interactive folder selection for source directories
+  - Implemented flat storage of images in the target folder
+  - Added CLI-based folder selection fallback when native dialogs don't work
 - **Web Crawling**: Google Images search with filtering and download capabilities
 - **Cross-Platform Support**: Windows drive selection, macOS/Linux path handling
 - **Human-Readable Sizes**: Added support for parsing sizes like '100KB', '1.5MB'
@@ -28,6 +31,12 @@ We've successfully implemented the key components of the image crawler applicati
 
 The application is functional and implements all core features described in the implementation plan. We've enhanced the CLI interface to match the plan exactly, added human-readable file size parsing, and updated the documentation with comprehensive usage examples.
 
+## Recent Improvements
+
+1. **Bug Fixes**: Fixed critical issues with undefined output directories in local mode by adding proper validation and fallbacks.
+2. **Enhanced Error Handling**: Improved error handling throughout the application with detailed logging and graceful fallbacks.
+3. **Interactive UI**: Added both native and CLI-based folder selection interfaces for better user experience.
+
 ## Outstanding Issues
 
 1. **Jest Configuration**: There are some ES modules compatibility issues with Jest that need to be resolved for the tests to run successfully.
@@ -40,7 +49,8 @@ The application is functional and implements all core features described in the 
 3. **Manual Testing**: Perform manual tests on different platforms to verify cross-platform functionality.
 4. **Performance Optimization**: Implement batch processing and parallel downloads for better performance.
 5. **Documentation Finalization**: Complete any remaining documentation, including troubleshooting guides.
+6. **Error Handling Review**: Continue to improve error handling and user feedback throughout the application.
 
 ## Conclusion
 
-The Image Crawler project has made significant progress, with all core features implemented according to the plan. The remaining work focuses primarily on testing infrastructure and final polishing.
+The Image Crawler project has made significant progress, with all core features implemented according to the plan. We've successfully fixed critical bugs related to output directory handling and enhanced the user experience with interactive folder selection. The remaining work focuses primarily on testing infrastructure and final polishing.

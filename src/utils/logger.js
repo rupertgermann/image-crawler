@@ -12,8 +12,8 @@ const LOG_LEVELS = {
   TRACE: 4
 };
 
-// Default log level
-let logLevel = process.env.NODE_ENV === 'production' ? LOG_LEVELS.INFO : LOG_LEVELS.DEBUG;
+// Default log level - force DEBUG level for now to help diagnose issues
+let logLevel = LOG_LEVELS.DEBUG;
 
 /**
  * Logger class for consistent logging
