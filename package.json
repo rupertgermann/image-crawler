@@ -9,8 +9,14 @@
     "dev": "node src/index.js interactive",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint .",
-    "format": "prettier --write ."
+    "test:coverage": "jest --coverage",
+    "test:ci": "npm run lint && npm run test:coverage",
+    "test:integration": "jest --testMatch='**/tests/integration/**/*.test.js'",
+    "test:unit": "jest --testMatch='**/tests/unit/**/*.test.js'",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write \"**/*.{js,json,md}\"",
+    "prepare": "husky install"
   },
   "bin": {
     "image-crawler": "./src/index.js"
@@ -24,6 +30,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@inquirer/prompts": "^3.0.0",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "cross-spawn": "^7.0.3",
@@ -38,11 +45,22 @@
     "@babel/preset-env": "^7.23.0",
     "@types/jest": "^29.5.8",
     "@types/node": "^20.8.10",
+    "@types/puppeteer": "^5.4.6",
+    "canvas": "^2.11.2",
     "eslint": "^8.54.0",
     "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-jest": "^27.6.0",
+    "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^8.0.3",
     "jest": "^29.7.0",
-    "prettier": "^3.1.0"
+    "jest-extended": "^4.0.2",
+    "jest-mock": "^29.7.0",
+    "lint-staged": "^15.0.2",
+    "puppeteer": "^21.7.0",
+    "prettier": "^3.1.0",
+    "uuid": "^9.0.1"
   },
   "optionalDependencies": {
     "windows-drive-letters": "^1.0.3"
