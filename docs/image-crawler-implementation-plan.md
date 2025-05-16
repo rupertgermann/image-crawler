@@ -138,6 +138,12 @@ image-crawler/
 - Headless mode configuration
 - GPU acceleration settings
 
+## 7. CLI and Configuration Management
+
+- **CLI Library:** Use [`commander`](https://github.com/tj/commander.js) for robust, user-friendly command-line parsing and help output. This is the Node.js community standard and ensures maintainability and extensibility.
+- **Configuration Loading:** Follow the [cosmiconfig](https://github.com/davidtheclark/cosmiconfig) pattern for flexible configuration file discovery, supporting JSON, JS, or YAML config files. This makes the tool more user-friendly and convention-driven.
+- **Defaults:** All CLI options and configuration defaults must match the schema described below. Validate and normalize user input.
+
 ## 7. Configuration Options
 
 ```javascript
@@ -188,20 +194,53 @@ npm run dev
 
 ## 9. Testing Strategy
 
+The project uses a comprehensive automated testing approach to ensure reliability and maintainability. Testing is performed at multiple levels and follows Node.js best practices:
+
 ### 9.1 Unit Tests
-- Path utilities
-- File operations
-- Validation logic
+- **Testing Library:** [`jest`](https://github.com/jestjs/jest) is used for all unit and integration tests. This is the industry standard for JavaScript/Node.js projects, providing fast, isolated, and maintainable tests.
+- Utilities: Path, logger, platform, and configuration manager utilities are covered by unit tests.
+- File operations: Mocked file system operations using Jest and custom mocks for `fs-extra` and `fs`.
+- Validation logic: Input validation and configuration validation are tested in isolation.
 
 ### 9.2 Integration Tests
-- Full crawl operations
-- Web downloads
-- Configuration loading
+- Local crawler: Integration tests verify recursive image detection, file type filtering, and directory structure preservation.
+- Web crawler: Integration tests mock browser automation (puppeteer) and network requests to validate image search, filtering, and download logic.
+- Configuration loading: Tests ensure correct initialization, updating, and resetting of configuration files.
 
-### 9.3 Manual Testing
-- Windows 10/11
-- macOS
-- Different permission levels
+### 9.3 Test Utilities
+- Custom test utilities are provided for generating temporary directories, test images, and files.
+- Mocks for `fs-extra`, `fs`, and `puppeteer` are used to isolate tests from the real file system and network.
+- Console output is mocked to ensure clean test output and allow assertions on log messages.
+
+### 9.4 Coverage and Quality
+- Jest is configured to collect test coverage, with a minimum threshold of 70% for branches, functions, lines, and statements.
+- Coverage reports are generated in text, lcov, and HTML formats.
+- **Linting:** [`eslint`](https://github.com/eslint/eslint) is used for code quality, following the `/antfu/eslint-config` preset for modern, community-aligned rules.
+- **Formatting:** [`prettier`](https://github.com/prettier/prettier) is used for code formatting. ESLint and Prettier are integrated to prevent style conflicts.
+- Linting and formatting scripts are provided for developer convenience and consistency.
+
+### 9.5 Manual Testing
+- Manual tests are performed on Windows 10/11 and macOS, including different permission levels and edge cases.
+
+## 10. Developer Workflow Automation
+
+- **Test Scripts:**
+  - `npm test` runs all tests.
+  - `npm run test:unit` and `npm run test:integration` run unit and integration tests separately.
+  - `npm run test:coverage` generates a coverage report.
+  - `scripts/test.sh` runs tests with coverage and enforces coverage thresholds.
+- **Linting & Formatting:**
+  - `npm run lint` and `npm run lint:fix` check and fix code style issues.
+  - Prettier configuration ensures consistent formatting across the codebase.
+- **Pre-commit Hooks:**
+  - Husky and lint-staged can be enabled to enforce linting and formatting before commits.
+
+## 11. Error Handling
+- Network failures: Retries and descriptive error messages.
+- File system errors: Graceful handling and user feedback.
+- Permission issues: Clear error reporting and fallback options.
+- Invalid inputs: Validation and helpful CLI feedback.
+- Rate limiting: Respect for search engine limits and user-agent rotation.
 
 ## 10. Error Handling
 - Network failures
