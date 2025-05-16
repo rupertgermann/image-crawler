@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs-extra';
 import LocalCrawler from './modes/local-crawler.js';
-import WebCrawler from './modes/web-crawler.js';
+import PlaywrightCrawler from './modes/playwright-crawler.js';
 import configManager from './utils/config.js';
 import Logger from './utils/logger.js';
 import * as pathUtils from './utils/paths.js';
@@ -141,10 +141,16 @@ program
   .option('--timeout <ms>', 'Browser operation timeout in milliseconds', parseInt)
   .action(async (query, options) => {
     try {
+      Logger.info('Starting web mode...');
+      Logger.debug('Web mode options:', JSON.stringify(options, null, 2));
+      
+      Logger.debug('Initializing configuration...');
       await configManager.init();
+      Logger.debug('Configuration initialized successfully');
       
       // Prompt for query if not provided
       if (!query) {
+        Logger.info('No search query provided, prompting user...');
         const answers = await inquirer.prompt([
           {
             type: 'input',
@@ -154,22 +160,47 @@ program
           }
         ]);
         query = answers.query;
+        Logger.info(`Search query entered: ${query}`);
+      } else {
+        Logger.info(`Using search query: ${query}`);
       }
 
       // Interactive output folder selection if not provided
       let outputDir = options.output;
       if (!outputDir) {
+        Logger.debug('No output directory specified, launching folder selection dialog...');
         try {
-          outputDir = await selectFolder('Select output folder for downloaded images', pathUtils.getDefaultDownloadDir());
+          const defaultDownloadDir = pathUtils.getDefaultDownloadDir();
+          Logger.debug(`Default download directory: ${defaultDownloadDir}`);
+          outputDir = await selectFolder('Select output folder for downloaded images', defaultDownloadDir);
           Logger.info(`Selected output folder: ${outputDir}`);
         } catch (error) {
-          Logger.warn('Using default output folder');
+          Logger.warn('Output folder selection canceled or failed, using default output folder');
+          Logger.debug(`Error during folder selection: ${error.message}`);
           outputDir = pathUtils.getDefaultDownloadDir();
+          Logger.debug(`Using fallback output directory: ${outputDir}`);
+        }
+      } else {
+        Logger.debug(`Using output directory from CLI: ${outputDir}`);
+      }
+      
+      // Validate output directory - ensure it's not undefined
+      if (!outputDir) {
+        Logger.warn('Output directory is undefined, using fallback directory');
+        outputDir = path.join(process.cwd(), 'downloads');
+        Logger.info(`Using fallback output directory: ${outputDir}`);
+        // Ensure the directory exists
+        try {
+          await fs.ensureDir(outputDir);
+        } catch (error) {
+          Logger.error(`Failed to create fallback output directory: ${error.message}`);
+          throw new Error('Failed to create output directory');
         }
       }
 
       // Initialize and start the web crawler
-      const crawler = new WebCrawler({
+      Logger.info('Initializing web crawler with Playwright...');
+      const crawlerOptions = {
         query,
         outputDir,
         maxDownloads: options.maxDownloads,
@@ -177,12 +208,21 @@ program
         minHeight: options.minHeight,
         minFileSize: options.minSize,
         safeSearch: options.safeSearch,
-        headless: true
-      });
+        headless: options.headless,
+        timeout: options.timeout,
+        fileTypes: options.fileTypes
+      };
+      Logger.debug('Crawler options:', JSON.stringify(crawlerOptions, null, 2));
+      
+      const crawler = new PlaywrightCrawler(crawlerOptions);
 
+      Logger.info('Starting web crawler...');
       await crawler.start();
+      Logger.info('Web crawler completed successfully.');
     } catch (error) {
-      Logger.error('Error in web mode:', error);
+      Logger.error('Error in web mode:', error.message);
+      Logger.debug('Error details:', error);
+      Logger.debug('Stack trace:', error.stack);
       process.exit(1);
     }
   });
@@ -269,7 +309,7 @@ async function runInteractiveMode() {
       }
 
       // Initialize and start the web crawler
-      const crawler = new WebCrawler({
+      const crawler = new PlaywrightCrawler({
         query,
         outputDir: options.output,
         maxDownloads: 20,

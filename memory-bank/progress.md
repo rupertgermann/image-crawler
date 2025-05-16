@@ -5,6 +5,12 @@
 - Updated README to document environment variables and their usage
 - Made the application more consistent across different environments
 - Eliminated potential issues with native dialogs that might not be available in all contexts
+- Enhanced web mode with better logging and validation similar to local mode
+- Improved error handling and reporting in web mode
+- Ensured proper validation of output directories in both modes
+- Replaced Puppeteer with Playwright for web crawling to improve reliability
+- Implemented multi-source image crawling (Pixabay, Unsplash, Google Images)
+- Added more robust image extraction and filtering capabilities
 
 ## Features Implemented
 - Comprehensive automated testing setup using Jest (unit and integration tests)
