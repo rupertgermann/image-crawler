@@ -5,11 +5,14 @@ A Node.js application that collects images either from local drives or via Googl
 
 ## 2. Core Features
 
-### 2.1 Local Image Collection
+### 2.1 Local Image Collector
 - Recursive directory scanning
-- File type filtering (jpg, png, gif, webp, bmp)
+  - Windows: Drive selection interface
+  - macOS: Default to user home directory
+- File type filtering (jpg, png, gif, webp)
 - File size filtering
 - Image dimension validation
+- Duplicate detection
 - Progress reporting
 - Duplicate checking
 
@@ -37,11 +40,16 @@ A Node.js application that collects images either from local drives or via Googl
     "puppeteer": "^21.0.0",
     "sharp": "^0.32.0",
     "progress": "^2.0.3",
-    "inquirer": "^9.2.0"
+    "inquirer": "^9.2.0",
+    "windows-drive-letters": "^1.0.3"
   },
   "devDependencies": {
     "jest": "^29.0.0",
-    "eslint": "^8.0.0"
+    "eslint": "^8.0.0",
+    "@types/node": "^18.0.0"
+  },
+  "optionalDependencies": {
+    "windows-drive-letters": "^1.0.3"
   }
 }
 ```
@@ -80,6 +88,11 @@ image-crawler/
 - [ ] Configuration management
 
 ### Phase 2: Local Crawler (2 days)
+- [ ] Platform detection
+- [ ] Windows: Drive detection and selection
+  - [ ] List available drives
+  - [ ] Interactive drive selection
+  - [ ] Cache selected drives
 - [ ] Directory traversal
 - [ ] File filtering
 - [ ] Image processing
@@ -109,6 +122,11 @@ image-crawler/
 - Use `path.join()` for all path operations
 - Handle drive letters (Windows) vs. mount points (macOS)
 - Normalize path separators
+- Windows-specific drive selection UI when running on Windows
+  - Detect available drives using `wmic` command on Windows
+  - Present interactive list of available drives
+  - Allow multi-drive selection for scanning
+  - Cache drive selection in config for subsequent runs
 
 ### 6.2 File System
 - Use `fs-extra` for atomic operations
@@ -130,6 +148,15 @@ image-crawler/
   "minFileSize": "100KB",
   "outputDir": "~/image-crawler/downloads",
   "fileTypes": ["jpg", "jpeg", "png", "gif", "webp"],
+  "platformSpecific": {
+    "windows": {
+      "selectedDrives": ["C:\\"],
+      "scanNetworkDrives": false
+    },
+    "darwin": {
+      "defaultScanPath": "/Users/username/Pictures"
+    }
+  },
   "searchEngines": {
     "google": {
       "enabled": true,
@@ -143,8 +170,14 @@ image-crawler/
 ## 8. CLI Commands
 
 ```bash
-# Local mode
+# Local mode (Windows - with drive selection)
+node src/index.js local --drives C D E --output ./downloads
+
+# Local mode (macOS/Linux)
 node src/index.js local --source ~/Pictures --output ./downloads --min-width 800 --min-height 600
+
+# Interactive drive selection (Windows only)
+node src/index.js local --select-drives
 
 # Web mode
 node src/index.js web --query "nature landscape" --max-downloads 50 --min-size 1MB
