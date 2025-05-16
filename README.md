@@ -60,7 +60,7 @@ image-crawler web "nature landscape" --max-downloads 50
 
 Options:
 - `-o, --output <path>`: Output directory for images (default: ./downloads)
-- `--max-downloads <count>`: Maximum number of images to download (default: 100)
+- `--max-downloads <count>`: Maximum number of images to download (default: 50)
 - `--min-width <pixels>`: Minimum image width in pixels (default: 800)
 - `--min-height <pixels>`: Minimum image height in pixels (default: 600)
 - `--min-size <bytes>`: Minimum file size (supports human-readable formats like '100KB', '1.5MB')

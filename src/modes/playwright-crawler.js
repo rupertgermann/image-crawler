@@ -16,10 +16,14 @@ const __dirname = path.dirname(__filename);
  */
 class PlaywrightCrawler {
   constructor(options = {}) {
+    // Get default maxDownloads from config if available
+    const config = configManager.getConfig() || {};
+    const defaultMaxDownloads = config.maxDownloads || 50;
+    
     this.options = {
       query: options.query || 'nature',
       outputDir: options.outputDir || pathUtils.getDefaultDownloadDir(),
-      maxDownloads: options.maxDownloads || 100,
+      maxDownloads: options.maxDownloads || defaultMaxDownloads,
       minWidth: options.minWidth || 800,
       minHeight: options.minHeight || 600,
       minFileSize: options.minFileSize || 10240, // 10KB
@@ -73,6 +77,9 @@ class PlaywrightCrawler {
       // Try different image sources
       let success = false;
       
+      // Log the max downloads limit
+      Logger.info(`Maximum download limit set to: ${this.options.maxDownloads} images`);
+      
       // Try different sources in order of reliability
       const sources = [
         { name: 'Pixabay', method: this.crawlPixabay.bind(this) },
@@ -80,21 +87,37 @@ class PlaywrightCrawler {
         { name: 'Google Images', method: this.crawlGoogleImages.bind(this) }
       ];
       
+      // Track downloads per source for better reporting
+      const sourceStats = {};
+      
       for (const source of sources) {
+        // Stop if we've already reached the max downloads limit
         if (this.downloadedCount >= this.options.maxDownloads) {
+          Logger.info(`Maximum download limit of ${this.options.maxDownloads} images reached. Stopping crawl.`);
           break;
         }
         
+        // Calculate how many more images we need
+        const remainingDownloads = this.options.maxDownloads - this.downloadedCount;
+        Logger.info(`Attempting to download ${remainingDownloads} more images from ${source.name}...`);
+        
         try {
-          Logger.info(`Trying to crawl ${source.name}...`);
-          await source.method();
+          // Track downloads from this source
+          const beforeCount = this.downloadedCount;
           
-          if (this.downloadedCount > 0) {
+          Logger.info(`Trying to crawl ${source.name}...`);
+          await source.method(remainingDownloads); // Pass the remaining count to the method
+          
+          const downloadedFromSource = this.downloadedCount - beforeCount;
+          sourceStats[source.name] = downloadedFromSource;
+          
+          if (downloadedFromSource > 0) {
             success = true;
-            Logger.info(`Successfully downloaded ${this.downloadedCount} images from ${source.name}`);
+            Logger.info(`Successfully downloaded ${downloadedFromSource} images from ${source.name}`);
             
             // If we've reached our download limit, break out of the loop
             if (this.downloadedCount >= this.options.maxDownloads) {
+              Logger.info(`Maximum download limit of ${this.options.maxDownloads} images reached. Stopping crawl.`);
               break;
             }
           } else {
@@ -102,15 +125,27 @@ class PlaywrightCrawler {
           }
         } catch (error) {
           Logger.warn(`Error crawling ${source.name}: ${error.message}`);
+          sourceStats[source.name] = 0;
         }
       }
       
+      // Final reporting
       if (!success) {
-        Logger.warn('Failed to download any images from all sources');
+        Logger.error('Failed to download any images from all sources');
+        return { success: false, count: 0 };
       }
-
+      
+      // Report on download results
+      if (this.downloadedCount < this.options.maxDownloads) {
+        Logger.warn(`Only downloaded ${this.downloadedCount}/${this.options.maxDownloads} requested images`);
+        Logger.info('This may be because not enough images matched your criteria (size/dimensions/type).');
+      } else {
+        Logger.info(`Successfully downloaded exactly ${this.downloadedCount} images as requested`);
+      }
+      
       Logger.success(`Crawling completed. Downloaded: ${this.downloadedCount}, skipped: ${this.skippedCount}, errors: ${this.errorCount}`);
       return {
+        success: true,
         downloaded: this.downloadedCount,
         skipped: this.skippedCount,
         errors: this.errorCount
@@ -127,8 +162,9 @@ class PlaywrightCrawler {
 
   /**
    * Crawl Pixabay for images
+   * @param {number} remainingDownloads - Maximum number of images to download
    */
-  async crawlPixabay() {
+  async crawlPixabay(remainingDownloads) {
     try {
       const query = encodeURIComponent(this.options.query);
       const pixabayUrl = `https://pixabay.com/images/search/${query}/`;
@@ -198,8 +234,17 @@ class PlaywrightCrawler {
 
       Logger.info(`Found ${imageUrls.length} images on Pixabay`);
 
+      // Calculate how many images to download from this source
+      const maxToDownload = remainingDownloads || this.options.maxDownloads;
+      Logger.info(`Will download up to ${maxToDownload} images from Pixabay`);
+      
+      // Limit the URLs to process based on the remaining downloads
+      const urlsToProcess = imageUrls.slice(0, maxToDownload);
+      Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
+      
       // Download images
-      for (const url of imageUrls) {
+      for (const url of urlsToProcess) {
+        // Double-check we haven't exceeded the limit (in case other sources added downloads)
         if (this.downloadedCount >= this.options.maxDownloads) {
           Logger.info('Maximum download limit reached');
           break;
@@ -207,6 +252,11 @@ class PlaywrightCrawler {
 
         try {
           await this.downloadImage(url);
+          
+          // Log progress every 5 images
+          if (this.downloadedCount % 5 === 0) {
+            Logger.info(`Downloaded ${this.downloadedCount}/${this.options.maxDownloads} images...`);
+          }
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;
@@ -226,8 +276,9 @@ class PlaywrightCrawler {
 
   /**
    * Crawl Unsplash for images
+   * @param {number} remainingDownloads - Maximum number of images to download
    */
-  async crawlUnsplash() {
+  async crawlUnsplash(remainingDownloads) {
     try {
       const query = encodeURIComponent(this.options.query);
       const unsplashUrl = `https://unsplash.com/s/photos/${query}`;
@@ -301,8 +352,17 @@ class PlaywrightCrawler {
 
       Logger.info(`Found ${imageUrls.length} images on Unsplash`);
 
+      // Calculate how many images to download from this source
+      const maxToDownload = remainingDownloads || this.options.maxDownloads;
+      Logger.info(`Will download up to ${maxToDownload} images from Unsplash`);
+      
+      // Limit the URLs to process based on the remaining downloads
+      const urlsToProcess = imageUrls.slice(0, maxToDownload);
+      Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
+      
       // Download images
-      for (const url of imageUrls) {
+      for (const url of urlsToProcess) {
+        // Double-check we haven't exceeded the limit (in case other sources added downloads)
         if (this.downloadedCount >= this.options.maxDownloads) {
           Logger.info('Maximum download limit reached');
           break;
@@ -310,6 +370,11 @@ class PlaywrightCrawler {
 
         try {
           await this.downloadImage(url);
+          
+          // Log progress every 5 images
+          if (this.downloadedCount % 5 === 0) {
+            Logger.info(`Downloaded ${this.downloadedCount}/${this.options.maxDownloads} images...`);
+          }
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;
@@ -328,9 +393,10 @@ class PlaywrightCrawler {
   }
 
   /**
-   * Crawl Google Images
+   * Crawl Google Images for images
+   * @param {number} remainingDownloads - Maximum number of images to download
    */
-  async crawlGoogleImages() {
+  async crawlGoogleImages(remainingDownloads) {
     try {
       const query = encodeURIComponent(this.options.query);
       const googleUrl = this.buildGoogleSearchUrl();
@@ -384,8 +450,17 @@ class PlaywrightCrawler {
         imageUrls.push(...moreUrls);
       }
 
+      // Calculate how many images to download from this source
+      const maxToDownload = remainingDownloads || this.options.maxDownloads;
+      Logger.info(`Will download up to ${maxToDownload} images from Google Images`);
+      
+      // Limit the URLs to process based on the remaining downloads
+      const urlsToProcess = imageUrls.slice(0, maxToDownload);
+      Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
+      
       // Download images
-      for (const url of imageUrls) {
+      for (const url of urlsToProcess) {
+        // Double-check we haven't exceeded the limit (in case other sources added downloads)
         if (this.downloadedCount >= this.options.maxDownloads) {
           Logger.info('Maximum download limit reached');
           break;
@@ -393,6 +468,11 @@ class PlaywrightCrawler {
 
         try {
           await this.downloadImage(url);
+          
+          // Log progress every 5 images
+          if (this.downloadedCount % 5 === 0) {
+            Logger.info(`Downloaded ${this.downloadedCount}/${this.options.maxDownloads} images...`);
+          }
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;

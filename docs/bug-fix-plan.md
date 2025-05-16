@@ -50,6 +50,64 @@ TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or 
 
 ## Testing Plan
 
+1. Test the local crawler with various output directory configurations
+2. Test with both CLI and native dialog folder selection
+3. Verify that the application gracefully handles undefined paths
+
+# Bug Fix Plan: Max Downloads Limit Implementation
+
+## Issue Analysis
+
+The max downloads limit was not being correctly enforced. When a user configures a max downloads limit, the script should download exactly that number of images (if available), but it was inconsistent in its behavior.
+
+### Root Cause
+
+1. The max downloads limit was being checked within each image source crawler, but not properly coordinated across multiple sources
+2. The default value was set to 100 in some places but not consistently applied
+3. The interactive mode had a hardcoded value of 20 downloads, ignoring the config setting
+4. There was no proper reporting of whether the download limit was successfully reached
+
+### Affected Files
+
+1. `/src/modes/playwright-crawler.js` - The crawler methods needed to respect the remaining downloads count
+2. `/src/utils/config.js` - The default max downloads value needed to be updated
+3. `/src/index.js` - The interactive mode needed to use the config value instead of a hardcoded value
+
+## Solution Plan
+
+### 1. Update the default configuration
+
+- Change the default max downloads from 100 to 50 in `config.js`
+
+### 2. Improve the PlaywrightCrawler implementation
+
+- Pass the remaining downloads count to each crawler method
+- Limit the number of images processed in each source based on the remaining downloads
+- Add better progress reporting during downloads
+- Provide clear feedback when the download limit is reached
+
+### 3. Fix the interactive mode
+
+- Use the config value for max downloads instead of a hardcoded value
+- Apply consistent defaults across the application
+
+## Implementation Steps
+
+1. Update the default max downloads value in `config.js`
+2. Modify the PlaywrightCrawler constructor to use the config default
+3. Update each crawler method (Pixabay, Unsplash, Google Images) to accept and respect a remainingDownloads parameter
+4. Limit the URLs processed in each source based on the remaining downloads
+5. Add progress reporting during downloads
+6. Update the interactive mode to use the config value
+7. Update the README to reflect the new default value
+
+## Testing Plan
+
+1. Test with different max downloads values to ensure exactly that many images are downloaded
+2. Test the fallback behavior when not enough images are available
+3. Verify that the progress reporting correctly shows the download status
+4. Confirm that the interactive mode uses the correct default value
+
 1. Run the application in local mode with the fix applied
 2. Verify that the output directory is correctly created
 3. Test with different configurations to ensure robustness

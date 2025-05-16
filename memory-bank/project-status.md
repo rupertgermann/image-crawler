@@ -1,4 +1,4 @@
-# Image Crawler Project Status - 2025-05-16
+# Image Crawler Project Status - 2025-05-17
 
 ## Implementation Overview
 
@@ -33,9 +33,15 @@ The application is functional and implements all core features described in the 
 
 ## Recent Improvements
 
-1. **Bug Fixes**: Fixed critical issues with undefined output directories in local mode by adding proper validation and fallbacks.
-2. **Enhanced Error Handling**: Improved error handling throughout the application with detailed logging and graceful fallbacks.
-3. **Interactive UI**: Added both native and CLI-based folder selection interfaces for better user experience.
+1. **Max Downloads Limit**: Implemented correct max downloads limit behavior across all crawler sources:
+   - Changed default max downloads from 100 to 50 in the config
+   - Updated the PlaywrightCrawler to properly enforce the limit across multiple sources
+   - Added better progress reporting during downloads
+   - Fixed the interactive mode to use config values instead of hardcoded values
+2. **Bug Fixes**: Fixed critical issues with undefined output directories in local mode by adding proper validation and fallbacks.
+3. **Enhanced Error Handling**: Improved error handling throughout the application with detailed logging and graceful fallbacks.
+4. **Interactive UI**: Added both native and CLI-based folder selection interfaces for better user experience.
+5. **Web Crawler Enhancement**: Replaced Puppeteer with Playwright for more reliable web crawling and implemented multi-source image crawling (Pixabay, Unsplash, Google Images).
 
 ## Outstanding Issues
 

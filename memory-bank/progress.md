@@ -1,3 +1,13 @@
+# Progress Update - 2025-05-17
+
+## Latest Changes
+- Implemented correct max downloads limit behavior across all crawler sources
+- Changed default max downloads from 100 to 50 in the config
+- Updated interactive mode to use config values instead of hardcoded values
+- Added better progress reporting during downloads
+- Improved coordination between multiple image sources to respect the overall download limit
+- Updated README to reflect the new default max downloads value
+
 # Progress Update - 2025-05-16
 
 ## Latest Changes

@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 // Default configuration
 const DEFAULT_CONFIG = {
   // General settings
-  maxDownloads: 100,
+  maxDownloads: 50,
   minWidth: 800,
   minHeight: 600,
   minFileSize: '100KB',

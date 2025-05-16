@@ -308,16 +308,19 @@ async function runInteractiveMode() {
         options.output = pathUtils.getDefaultDownloadDir();
       }
 
+      // Get config for default values
+      const config = configManager.getConfig();
+      
       // Initialize and start the web crawler
       const crawler = new PlaywrightCrawler({
         query,
         outputDir: options.output,
-        maxDownloads: 20,
-        minWidth: 800,
-        minHeight: 600,
-        minFileSize: 0,
-        safeSearch: true,
-        headless: true
+        maxDownloads: config.maxDownloads || 50, // Use config default or fallback to 50
+        minWidth: config.minWidth || 800,
+        minHeight: config.minHeight || 600,
+        minFileSize: config.minFileSize || 0,
+        safeSearch: config.safeSearch !== false,
+        headless: config.headless !== false
       });
 
       await crawler.start();
