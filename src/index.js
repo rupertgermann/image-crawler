@@ -33,10 +33,11 @@ program
   .option('-o, --output <path>', 'Output directory for images')
   .option('--min-width <pixels>', 'Minimum image width in pixels', parseInt)
   .option('--min-height <pixels>', 'Minimum image height in pixels', parseInt)
-  .option('--min-size <bytes>', 'Minimum file size in bytes', parseInt)
+  .option('--min-size <bytes>', 'Minimum file size in bytes (e.g., 100KB)', val => pathUtils.parseSize(val))
   .option('--max-files <count>', 'Maximum number of files to process', parseInt)
   .option('--flat', 'Flatten directory structure in output')
   .option('--select-drives', 'Interactively select drives (Windows only)')
+  .option('--file-types <types>', 'Comma-separated list of file extensions to include', val => val.split(','))
   .action(async (options) => {
     try {
       await configManager.init();
@@ -97,8 +98,11 @@ program
   .option('--max-downloads <count>', 'Maximum number of images to download', parseInt)
   .option('--min-width <pixels>', 'Minimum image width in pixels', parseInt)
   .option('--min-height <pixels>', 'Minimum image height in pixels', parseInt)
-  .option('--min-size <bytes>', 'Minimum file size in bytes', parseInt)
+  .option('--min-size <bytes>', 'Minimum file size in bytes (e.g., 100KB)', val => pathUtils.parseSize(val))
   .option('--no-safe-search', 'Disable safe search')
+  .option('--file-types <types>', 'Comma-separated list of file extensions to include', val => val.split(','))
+  .option('--headless', 'Run browser in headless mode', true)
+  .option('--timeout <ms>', 'Browser operation timeout in milliseconds', parseInt)
   .action(async (query, options) => {
     try {
       await configManager.init();

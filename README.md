@@ -44,10 +44,11 @@ Options:
 - `-o, --output <path>`: Output directory for images (default: ./downloads)
 - `--min-width <pixels>`: Minimum image width in pixels
 - `--min-height <pixels>`: Minimum image height in pixels
-- `--min-size <bytes>`: Minimum file size in bytes
+- `--min-size <bytes>`: Minimum file size (supports human-readable formats like '100KB', '1.5MB')
 - `--max-files <count>`: Maximum number of files to process
 - `--flat`: Flatten directory structure in output
 - `--select-drives`: Interactively select drives (Windows only)
+- `--file-types <types>`: Comma-separated list of file extensions to include (e.g., 'jpg,png,webp')
 
 ### Web Mode
 
@@ -62,8 +63,11 @@ Options:
 - `--max-downloads <count>`: Maximum number of images to download (default: 100)
 - `--min-width <pixels>`: Minimum image width in pixels (default: 800)
 - `--min-height <pixels>`: Minimum image height in pixels (default: 600)
-- `--min-size <bytes>`: Minimum file size in bytes (default: 10240)
+- `--min-size <bytes>`: Minimum file size (supports human-readable formats like '100KB', '1.5MB')
 - `--no-safe-search`: Disable safe search
+- `--file-types <types>`: Comma-separated list of file extensions to include (e.g., 'jpg,png,webp')
+- `--headless`: Run browser in headless mode (default: true)
+- `--timeout <ms>`: Browser operation timeout in milliseconds (default: 30000)
 
 ### Interactive Mode
 

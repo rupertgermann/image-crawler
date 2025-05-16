@@ -1,6 +1,12 @@
-export default {
+module.exports = {
   testEnvironment: 'node',
-  transform: {},
+  transform: {
+    '^.+\\.js$': ['babel-jest', { configFile: './babel.config.cjs' }]
+  },
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^\\.{2}/\\*': '<rootDir>/src/$1',
+  },
   testMatch: ['**/tests/**/*.test.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   collectCoverage: true,
@@ -21,9 +27,9 @@ export default {
       statements: 70,
     },
   },
-  moduleNameMapper: {
-    '^\\.{2}/\*': '<rootDir>/src/$1',
-  },
+  transformIgnorePatterns: [
+    '/node_modules/(?!.*\\.mjs$)'
+  ],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/coverage/',

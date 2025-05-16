@@ -131,6 +131,43 @@ export const sanitizeFilename = (filename) => {
     .replace(/^[\s.]+|[\s.]+$/g, ''); // Trim dots and spaces from start/end
 };
 
+/**
+ * Parses a human-readable size string into bytes
+ * @param {string|number} sizeStr - Size string (e.g., '100KB', '1.5MB') or number (bytes)
+ * @returns {number} Size in bytes
+ */
+export const parseSize = (sizeStr) => {
+  if (typeof sizeStr === 'number') return sizeStr;
+  
+  // If it's just a number, return it as bytes
+  if (/^\d+$/.test(sizeStr)) return parseInt(sizeStr, 10);
+  
+  const units = {
+    b: 1,
+    kb: 1024,
+    mb: 1024 * 1024,
+    gb: 1024 * 1024 * 1024,
+    tb: 1024 * 1024 * 1024 * 1024
+  };
+  
+  // Parse the string (e.g., '100KB', '1.5MB')
+  const match = sizeStr.toLowerCase().match(/^([\d.]+)\s*([kmgt]?b)?$/);
+  if (!match) {
+    Logger.warn(`Invalid size format: ${sizeStr}, using 0 bytes`);
+    return 0;
+  }
+  
+  const size = parseFloat(match[1]);
+  const unit = match[2] || 'b';
+  
+  if (!units[unit]) {
+    Logger.warn(`Unknown size unit: ${unit}, using bytes`);
+    return size;
+  }
+  
+  return Math.floor(size * units[unit]);
+};
+
 export default {
   resolvePath,
   ensureDir,
@@ -139,5 +176,6 @@ export default {
   getDefaultScanDir,
   isInProjectDir,
   getFilesRecursively,
-  sanitizeFilename
+  sanitizeFilename,
+  parseSize,
 };

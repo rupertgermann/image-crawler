@@ -7,12 +7,12 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js interactive",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "jest --config=jest.config.cjs",
+    "test:watch": "jest --config=jest.config.cjs --watch",
+    "test:coverage": "jest --config=jest.config.cjs --coverage",
     "test:ci": "npm run lint && npm run test:coverage",
-    "test:integration": "jest --testMatch='**/tests/integration/**/*.test.js'",
-    "test:unit": "jest --testMatch='**/tests/unit/**/*.test.js'",
+    "test:integration": "jest --config=jest.config.cjs --testMatch='**/tests/integration/**/*.test.js'",
+    "test:unit": "jest --config=jest.config.cjs --testMatch='**/tests/unit/**/*.test.js'",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",
@@ -67,11 +67,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "coveragePathIgnorePatterns": [
-      "/node_modules/"
-    ]
   }
 }
