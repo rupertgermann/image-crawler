@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { getPlatformInfo } from './platform.js';
 import Logger from './logger.js';
+import configManager from './config.js';
 
 const platform = getPlatformInfo();
 
@@ -48,6 +49,22 @@ export const pathExists = async (path) => {
  * @returns {string} Default download directory path
  */
 export const getDefaultDownloadDir = () => {
+  try {
+    const config = configManager.getConfig();
+    if (config) {
+      if (platform.isWindows) {
+        return config.platformSpecific.windows.defaultOutputDir;
+      } else if (platform.isMac) {
+        return config.platformSpecific.darwin.defaultOutputDir;
+      } else {
+        return config.platformSpecific.linux.defaultOutputDir;
+      }
+    }
+  } catch (error) {
+    Logger.warn('Could not get default download directory from config, using fallback', error);
+  }
+  
+  // Fallback if config is not available
   if (platform.isWindows) {
     return path.join(platform.homedir, 'Downloads', 'image-crawler');
   }
@@ -59,6 +76,22 @@ export const getDefaultDownloadDir = () => {
  * @returns {string} Default scan directory path
  */
 export const getDefaultScanDir = () => {
+  try {
+    const config = configManager.getConfig();
+    if (config) {
+      if (platform.isWindows) {
+        return config.platformSpecific.windows.defaultScanPath;
+      } else if (platform.isMac) {
+        return config.platformSpecific.darwin.defaultScanPath;
+      } else {
+        return config.platformSpecific.linux.defaultScanPath;
+      }
+    }
+  } catch (error) {
+    Logger.warn('Could not get default scan directory from config, using fallback', error);
+  }
+  
+  // Fallback if config is not available
   if (platform.isWindows) {
     return 'C:\\';
   } else if (platform.isMac) {

@@ -46,7 +46,7 @@ Options:
 - `--min-height <pixels>`: Minimum image height in pixels
 - `--min-size <bytes>`: Minimum file size (supports human-readable formats like '100KB', '1.5MB')
 - `--max-files <count>`: Maximum number of files to process
-- `--flat`: Flatten directory structure in output
+- `--preserve-structure`: Preserve directory structure in output (default: flat)
 - `--select-drives`: Interactively select drives (Windows only)
 - `--file-types <types>`: Comma-separated list of file extensions to include (e.g., 'jpg,png,webp')
 

@@ -20,7 +20,7 @@ class LocalCrawler {
       minFileSize: options.minFileSize || 0,
       fileTypes: options.fileTypes || ['jpg', 'jpeg', 'png', 'gif', 'webp'],
       maxFiles: options.maxFiles || Number.MAX_SAFE_INTEGER,
-      preserveStructure: options.preserveStructure !== false,
+      preserveStructure: options.preserveStructure === true, // Default to flat structure
       ...options
     };
 

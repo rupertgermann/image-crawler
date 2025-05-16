@@ -19,13 +19,17 @@ const DEFAULT_CONFIG = {
   platformSpecific: {
     windows: {
       selectedDrives: ['C:\\'],
-      scanNetworkDrives: false
+      scanNetworkDrives: false,
+      defaultScanPath: 'C:\\Users\\Pictures',
+      defaultOutputDir: path.join(process.cwd(), 'downloads')
     },
     darwin: {
-      defaultScanPath: path.join(process.env.HOME, 'Pictures')
+      defaultScanPath: path.join(process.env.HOME, 'Pictures'),
+      defaultOutputDir: path.join(process.env.HOME, 'Downloads', 'image-crawler')
     },
     linux: {
-      defaultScanPath: path.join(process.env.HOME, 'Pictures')
+      defaultScanPath: path.join(process.env.HOME, 'Pictures'),
+      defaultOutputDir: path.join(process.env.HOME, 'Downloads', 'image-crawler')
     }
   },
   

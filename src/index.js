@@ -35,7 +35,7 @@ program
   .option('--min-height <pixels>', 'Minimum image height in pixels', parseInt)
   .option('--min-size <bytes>', 'Minimum file size in bytes (e.g., 100KB)', val => pathUtils.parseSize(val))
   .option('--max-files <count>', 'Maximum number of files to process', parseInt)
-  .option('--flat', 'Flatten directory structure in output')
+  .option('--preserve-structure', 'Preserve directory structure in output (default: flat)')
   .option('--select-drives', 'Interactively select drives (Windows only)')
   .option('--file-types <types>', 'Comma-separated list of file extensions to include', val => val.split(','))
   .action(async (options) => {
@@ -48,27 +48,23 @@ program
         return;
       }
 
-      // Interactive folder selection if no source provided
-      if (!options.source) {
-        try {
-          options.source = await selectFolder('Select source folder', pathUtils.getDefaultScanDir());
-          Logger.info(`Selected source folder: ${options.source}`);
-        } catch (error) {
-          Logger.warn('Using default source folder');
-          options.source = platform.isWindows ? 'C:\\' : pathUtils.getDefaultScanDir();
-        }
+      // Always use interactive folder selection for source
+      try {
+        const defaultScanDir = pathUtils.getDefaultScanDir();
+        // If source was provided via CLI, use it as the default in the dialog
+        const initialDir = options.source || defaultScanDir;
+        options.source = await selectFolder('Select source folder', initialDir);
+        Logger.info(`Selected source folder: ${options.source}`);
+      } catch (error) {
+        Logger.warn('Source folder selection canceled, using default source folder');
+        options.source = platform.isWindows ? 'C:\\' : pathUtils.getDefaultScanDir();
       }
 
-      // Interactive output folder selection if not provided
+      // Use output folder from CLI or config
       let outputDir = options.output;
       if (!outputDir) {
-        try {
-          outputDir = await selectFolder('Select output folder', pathUtils.getDefaultDownloadDir());
-          Logger.info(`Selected output folder: ${outputDir}`);
-        } catch (error) {
-          Logger.warn('Using default output folder');
-          outputDir = pathUtils.getDefaultDownloadDir();
-        }
+        outputDir = pathUtils.getDefaultDownloadDir();
+        Logger.info(`Using output folder from config: ${outputDir}`);
       }
 
       // Initialize and start the local crawler
@@ -79,7 +75,7 @@ program
         minHeight: options.minHeight,
         minFileSize: options.minSize,
         maxFiles: options.maxFiles,
-        preserveStructure: !options.flat
+        preserveStructure: options.preserveStructure
       });
 
       await crawler.start();
