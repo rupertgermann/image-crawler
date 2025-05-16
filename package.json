@@ -1,0 +1,59 @@
+{
+  "name": "image-crawler",
+  "version": "1.0.0",
+  "description": "Cross-platform image collection tool with local and web crawling capabilities",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js interactive",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "bin": {
+    "image-crawler": "./src/index.js"
+  },
+  "keywords": [
+    "image",
+    "crawler",
+    "downloader",
+    "scraper"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "cross-spawn": "^7.0.3",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^9.2.10",
+    "puppeteer": "^21.7.0",
+    "sharp": "^0.33.0",
+    "progress": "^2.0.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@types/jest": "^29.5.8",
+    "@types/node": "^20.8.10",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.1.0"
+  },
+  "optionalDependencies": {
+    "windows-drive-letters": "^1.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ]
+  }
+}
