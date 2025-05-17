@@ -9,51 +9,71 @@ export default class WikimediaProvider extends BaseProvider {
   constructor(config) {
     super(config);
     this.baseUrl = 'https://commons.wikimedia.org/w/api.php';
+    this.name = 'Wikimedia'; // For logging
   }
 
-  async search(query, options = {}) {
-    // API: action=query&generator=search&gsrnamespace=6&gsrsearch={query}&gsrlimit=30&prop=imageinfo&iiprop=url&format=json
-    const url = `${this.baseUrl}?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=${options.maxResults||30}&prop=imageinfo&iiprop=url&format=json&origin=*`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Wikimedia API error: ${response.status}`);
-    const data = await response.json();
-    this.images = [];
-    if (data.query && data.query.pages) {
-      for (const pageId of Object.keys(data.query.pages)) {
-        const page = data.query.pages[pageId];
-        if (page.imageinfo && page.imageinfo.length > 0) {
-          this.images.push(page.imageinfo[0].url);
+  async initialize() {
+    Logger.info('WikimediaProvider initialized.');
+  }
+
+  /**
+   * Fetches image URLs from Wikimedia Commons API.
+   * @param {string} query - The search query.
+   * @param {object} options - Additional options (e.g., maxResults).
+   * @param {import('playwright').Page} [playwrightPage] - Optional Playwright page (not used).
+   * @returns {Promise<string[]>} - A promise that resolves to an array of image URLs.
+   */
+  async fetchImageUrls(query, options, playwrightPage) { // eslint-disable-line no-unused-vars
+    const maxResults = options.maxResults || this.config.perPage || 30;
+    // API parameters for Wikimedia Commons:
+    // action=query: Perform a query.
+    // generator=search: Use search results as a generator for pages.
+    // gsrnamespace=6: Search only in the File namespace (namespace 6).
+    // gsrsearch={query}: The search term.
+    // gsrlimit={maxResults}: Number of results to return.
+    // prop=imageinfo: Get information about images.
+    // iiprop=url: Get the URL of the image file itself.
+    // format=json: Return results in JSON format.
+    // origin=*: Required for cross-domain AJAX requests from a browser, good practice for server-side too.
+    const apiUrl = `${this.baseUrl}?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=${maxResults}&prop=imageinfo&iiprop=url&format=json&origin=*`;
+    
+    Logger.info(`[${this.name}] Fetching from ${apiUrl}`);
+    const imageUrls = [];
+
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        const errorBody = await response.text();
+        Logger.error(`[${this.name}] API error: ${response.status} - ${response.statusText}. Body: ${errorBody}`);
+        throw new Error(`Wikimedia API error: ${response.status} - ${errorBody}`);
+      }
+
+      const data = await response.json();
+      if (data.query && data.query.pages) {
+        for (const pageId of Object.keys(data.query.pages)) {
+          const page = data.query.pages[pageId];
+          if (page.imageinfo && page.imageinfo.length > 0 && page.imageinfo[0].url) {
+            imageUrls.push(page.imageinfo[0].url);
+          }
         }
       }
+      Logger.info(`[${this.name}] Found ${imageUrls.length} image URLs.`);
+      return imageUrls;
+    } catch (error) {
+      Logger.error(`[${this.name}] Error fetching images for "${query}": ${error.message}`);
+      Logger.debug(error.stack);
+      return [];
     }
-    return this.images;
   }
 
-  async getImageUrls() {
-    return this.images || [];
-  }
-
-  async downloadImages(urls, options = {}) {
-    const outputDir = options.outputDir || '.';
-    let count = 0;
-    for (const url of urls) {
-      const fileName = `wikimedia_${path.basename(url).split('?')[0]}`;
-      const outPath = path.join(outputDir, fileName);
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const stream = fs.createWriteStream(outPath);
-        await new Promise((resolve, reject) => {
-          res.body.pipe(stream);
-          res.body.on('error', reject);
-          stream.on('finish', resolve);
-        });
-        Logger.info(`Wikimedia: Downloaded ${url} -> ${outPath}`);
-        count++;
-      } catch (err) {
-        Logger.warn(`Wikimedia: Failed to download ${url}: ${err.message}`);
-      }
-    }
-    return count;
+  /**
+   * For Wikimedia, the URL from fetchImageUrls should be the direct image URL.
+   * @param {import('playwright').Page} page - The Playwright page instance (not used).
+   * @param {string} imageUrl - The URL of the image.
+   * @returns {Promise<string>} - The full-size image URL.
+   */
+  async getFullSizeImage(page, imageUrl) { // eslint-disable-line no-unused-vars
+    Logger.debug(`[${this.name}] getFullSizeImage called for: ${imageUrl}. Returning as is.`);
+    return imageUrl;
   }
 }

@@ -87,3 +87,20 @@
 ---
 
 This update reflects the implementation of the image-crawler-implementation-plan.md, focusing on CLI enhancements, human-readable file size parsing, documentation improvements, and testing setup.
+
+## Provider Refactoring Completed (Session Ending [Timestamp])
+
+**Implemented Features:**
+*   All image providers (Pexels, Google, Pixabay, Unsplash, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia) have been refactored to a new unified interface using `fetchImageUrls` and `getFullSizeImage`.
+*   Providers now utilize the `PlaywrightCrawler`'s Playwright page instance instead of managing their own browser instances.
+*   Legacy methods (`search`, `getImageUrls`, `downloadImages`) have been removed from all providers.
+*   `initialize()` methods and `name` properties were added to all providers for consistency and logging.
+*   Provider-specific configurations (e.g., `maxScrollsBing`, `scrollDelayDDG`) were added to `src/utils/config.js` for fine-tuning Bing, DuckDuckGo, and FreeImages behavior.
+
+**Encountered Errors & Fixes:**
+*   Initially attempted to use `write_to_file` for `progress.md` which failed as the file exists. Corrected by switching to `edit_file` for appending content (pending this action).
+
+**Next Steps/Outstanding Issues:**
+*   Thorough end-to-end testing of all refactored image providers with various search queries and configurations.
+*   Update the main `README.md` to reflect any changes in provider configuration or usage, if necessary.
+*   General code cleanup and review.

@@ -5,9 +5,17 @@ export default class BaseProvider {
   }
 
   async initialize() {}
-  async search(query, options) { throw new Error('search() must be implemented by subclass'); }
-  async getImageUrls() { throw new Error('getImageUrls() must be implemented by subclass'); }
-  async downloadImages(urls, options) { throw new Error('downloadImages() must be implemented by subclass'); }
+
+  /**
+   * Fetches image URLs from the provider.
+   * @param {string} query - The search query.
+   * @param {object} options - Additional options (e.g., maxResults).
+   * @param {import('playwright').Page} [playwrightPage] - Optional Playwright page instance for providers needing browser automation.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of image URLs.
+   */
+  async fetchImageUrls(query, options, playwrightPage) { // eslint-disable-line no-unused-vars
+    throw new Error('fetchImageUrls() must be implemented by subclass');
+  }
 
   // Universal: check image dimensions before downloading
   async detectImageDimensions(page, url) {

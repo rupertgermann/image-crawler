@@ -7,6 +7,7 @@ import Logger from '../utils/logger.js';
 import * as validators from '../utils/validators.js';
 import * as pathUtils from '../utils/paths.js';
 import configManager from '../utils/config.js';
+import ProviderRegistry from '../providers/provider-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,11 +20,19 @@ import { DEFAULT_CONFIG } from '../utils/config.js';
 class PlaywrightCrawler {
   constructor(options = {}) {
     // Merge: CLI/explicit options > config file > DEFAULT_CONFIG
-    const config = configManager.getConfig();
-    this.options = { ...DEFAULT_CONFIG, ...config, ...options };
-    this.totalDownloadLimit = this.options.maxDownloads;
+    configManager.setCliProviderOverrides(options.provider); // Set CLI overrides first
 
-    
+    const config = configManager.getConfig(); // Now getConfig() will have defaults
+    this.options = { ...config, ...options }; // CLI options (like query, outputDir) override config file
+    this.totalDownloadLimit = parseInt(this.options.maxDownloads, 10) || DEFAULT_CONFIG.maxDownloads;
+    if (isNaN(this.totalDownloadLimit) || this.totalDownloadLimit <= 0) {
+      Logger.warn(`Invalid maxDownloads value (${this.options.maxDownloads}). Falling back to default: ${DEFAULT_CONFIG.maxDownloads}`);
+      this.totalDownloadLimit = DEFAULT_CONFIG.maxDownloads;
+    }
+    this.options.maxDownloads = this.totalDownloadLimit; // Ensure options reflects the validated number
+
+    this.providerRegistry = new ProviderRegistry(); // Instantiate registry
+
     this.downloadedCount = 0;
     this.skippedCount = 0;
     this.errorCount = 0;
@@ -54,7 +63,17 @@ class PlaywrightCrawler {
   async start() {
     try {
       Logger.info('Starting Playwright web crawler...');
-      Logger.debug(`Options: ${JSON.stringify(this.options, null, 2)}`);
+      // Initialize provider registry - this uses the effective config
+      await this.providerRegistry.initialize();
+      const activeProviders = this.providerRegistry.getActiveProviders();
+
+      if (activeProviders.length === 0) {
+        Logger.warn('No active providers. Check your configuration or --provider argument. Exiting.');
+        return { success: false, count: 0, downloaded: 0, skipped: 0, errors: 0 };
+      }
+
+      Logger.debug(`Effective options: ${JSON.stringify(this.options, null, 2)}`);
+      Logger.info(`Active providers: ${activeProviders.map(p => p.constructor.name).join(', ')}`);
 
       // Ensure output directory exists
       await pathUtils.ensureDir(this.options.outputDir);
@@ -86,79 +105,76 @@ class PlaywrightCrawler {
       // Log the max downloads limit
       Logger.info(`Maximum download limit set to: ${this.options.maxDownloads} images`);
       
-      // Define available sources
-      const availableSources = {
-        pixabay: { name: 'Pixabay', method: this.crawlPixabay.bind(this) },
-        unsplash: { name: 'Unsplash', method: this.crawlUnsplash.bind(this) },
-        google: { name: 'Google Images', method: this.crawlGoogleImages.bind(this) }
-      };
-      
-      // Determine which sources to use based on provider option
-      let sources = [];
-      const provider = (this.options.provider || 'all').toLowerCase();
-      
-      if (provider === 'all') {
-        // Use all sources in default order
-        sources = Object.values(availableSources);
-      } else if (availableSources[provider]) {
-        // Use only the specified provider
-        sources = [availableSources[provider]];
-        Logger.info(`Using specific provider: ${availableSources[provider].name}`);
-      } else {
-        // Invalid provider specified, use all with a warning
-        Logger.warn(`Invalid provider '${provider}'. Available providers: ${Object.keys(availableSources).join(', ')}, or 'all'`);
-        sources = Object.values(availableSources);
-      }
-      
       // Track downloads per source for better reporting
       const sourceStats = {};
-      let totalImagesFound = 0;
+      // let totalImagesFound = 0; // Not used currently, can be re-added if needed
       
       // Set a hard limit on total images to download
       this.totalDownloadLimit = this.options.maxDownloads;
       Logger.info(`Setting hard limit of ${this.totalDownloadLimit} total images across all sources`);
       
-      for (const source of sources) {
-        // Stop if we've already reached the max downloads limit
+      for (const providerInstance of activeProviders) {
+        const providerName = providerInstance.constructor.name.replace('Provider', ''); // Get a user-friendly name
         if (this.downloadedCount >= this.totalDownloadLimit) {
           Logger.info(`Maximum download limit of ${this.totalDownloadLimit} images reached. Stopping crawl.`);
           break;
         }
         
-        // Calculate how many more images we need
         const remainingDownloads = this.totalDownloadLimit - this.downloadedCount;
-        Logger.info(`Attempting to download ${remainingDownloads} more images from ${source.name}...`);
+        Logger.info(`Attempting to download up to ${remainingDownloads} more images from ${providerName}...`);
         
         try {
-          // Track downloads from this source
           const beforeCount = this.downloadedCount;
-          
-          Logger.info(`Trying to crawl ${source.name}...`);
-          await source.method(remainingDownloads); // Pass the remaining count to the method
-          
-          const downloadedFromSource = this.downloadedCount - beforeCount;
-          sourceStats[source.name] = downloadedFromSource;
-          totalImagesFound += downloadedFromSource;
+          let downloadedFromSource = 0;
+
+          Logger.info(`Fetching image URLs from ${providerName}...`);
+          // Use the standardized fetchImageUrls method
+          const imageUrls = await providerInstance.fetchImageUrls(
+            this.options.query, 
+            { maxResults: remainingDownloads }, 
+            this.page
+          );
+
+          Logger.info(`Found ${imageUrls.length} potential image URLs from ${providerName}. Processing...`);
+
+          for (const imageUrl of imageUrls) {
+            if (this.downloadedCount >= this.totalDownloadLimit) {
+              Logger.info(`Download limit reached while processing images from ${providerName}.`);
+              break; // Break from processing URLs for this provider
+            }
+            // Pass providerInstance to processImage
+            const processed = await this.processImage(imageUrl, providerName, providerInstance);
+            if (processed) {
+              downloadedFromSource++;
+            }
+          }
+
+          sourceStats[providerName] = downloadedFromSource;
           
           if (downloadedFromSource > 0) {
             success = true;
-            Logger.info(`Successfully downloaded ${downloadedFromSource} images from ${source.name}`);
+            Logger.info(`Successfully downloaded ${downloadedFromSource} images from ${providerName}`);
             Logger.info(`Total downloaded so far: ${this.downloadedCount}/${this.totalDownloadLimit}`);
-            
-            // If we've reached our download limit, break out of the loop
-            if (this.downloadedCount >= this.totalDownloadLimit) {
-              Logger.info(`Maximum download limit of ${this.totalDownloadLimit} images reached. Stopping crawl.`);
-              break;
-            }
           } else {
-            Logger.warn(`No images downloaded from ${source.name}, trying next source...`);
+            Logger.warn(`No images downloaded from ${providerName} for this batch, trying next source...`);
           }
         } catch (error) {
-          Logger.warn(`Error crawling ${source.name}: ${error.message}`);
-          sourceStats[source.name] = 0;
+          Logger.error(`Error crawling ${providerName}: ${error.message}`);
+          this.errorCount++;
+          Logger.debug(error.stack);
+        }
+
+        // If we've reached our download limit, break out of the provider loop
+        if (this.downloadedCount >= this.totalDownloadLimit) {
+          Logger.info(`Maximum download limit of ${this.totalDownloadLimit} images reached. Stopping crawl.`);
+          break;
         }
       }
-      
+
+      if (this.browser) {
+        await this.browser.close();
+      }
+
       // Final reporting
       if (!success) {
         Logger.error('Failed to download any images from all sources');
@@ -189,706 +205,130 @@ class PlaywrightCrawler {
     } catch (error) {
       Logger.error('Error during web crawling:', error);
       throw error;
-    } finally {
-      if (this.browser) {
-        await this.browser.close();
-      }
     }
   }
 
   /**
-   * Crawl Pixabay for images
-   * @param {number} remainingDownloads - Maximum number of images to download
+   * Process a single image: download, validate, save, and deduplicate
+   * @param {string} imageUrl - The URL of the image to process
+   * @param {string} source - The source of the image (e.g., 'Pixabay')
+   * @param {BaseProvider} providerInstance - The instance of the provider for this image
+   * @returns {Promise<boolean>} - True if downloaded, false otherwise
    */
-  async crawlPixabay(remainingDownloads) {
+  async processImage(imageUrl, source, providerInstance) {
+    if (!validators.isValidUrl(imageUrl)) {
+      Logger.warn(`Skipping invalid URL: ${imageUrl}`);
+      this.skippedCount++;
+      return false;
+    }
+
+    // Attempt to get full size image URL using provider's method
+    let finalImageUrl = imageUrl;
     try {
-      const query = encodeURIComponent(this.options.query);
-      const pixabayUrl = `https://pixabay.com/images/search/${query}/`;
-      Logger.info(`Searching Pixabay for: ${this.options.query}`);
-      Logger.debug(`Pixabay URL: ${pixabayUrl}`);
-
-      // Navigate to Pixabay
-      Logger.info('Navigating to Pixabay...');
-      await this.page.goto(pixabayUrl, { waitUntil: 'networkidle', timeout: this.options.timeout });
-      
-      // Accept cookies if the dialog appears
-      try {
-        const cookieSelectors = [
-          'button.accept', 
-          'button[data-testid="cookie-accept-button"]', 
-          'button.cookie-accept',
-          'button:has-text("Accept")',
-          'button:has-text("I Agree")'
-        ];
-        
-        for (const selector of cookieSelectors) {
-          const cookieButton = await this.page.$(selector);
-          if (cookieButton) {
-            Logger.info(`Found cookie dialog, clicking accept button (${selector})...`);
-            await cookieButton.click();
-            await this.page.waitForTimeout(1000);
-            break;
-          }
-        }
-      } catch (error) {
-        Logger.debug('No cookie dialog found or error accepting cookies:', error.message);
-      }
-
-      // Scroll to load more images
-      Logger.info('Scrolling to load more images...');
-      await this.autoScroll();
-      Logger.info('Scrolling completed');
-
-      // Extract image URLs
-      const imageUrls = await this.page.evaluate(() => {
-        // Try multiple selectors to find image containers
-        const selectors = [
-          '.container--HcTw2 img', 
-          '.search-result-container img', 
-          '.item img',
-          'img[src*="pixabay.com"]',
-          'a[href*="/images/"] img'
-        ];
-        
-        let allImages = [];
-        
-        // Try each selector
-        for (const selector of selectors) {
-          const images = Array.from(document.querySelectorAll(selector));
-          if (images.length > 0) {
-            console.log(`Found ${images.length} images with selector: ${selector}`);
-            allImages = [...allImages, ...images];
-          }
-        }
-        
-        // Extract URLs from image elements
-        return [...new Set(allImages.map(img => {
-          // Try to get the highest resolution version
-          return img.dataset.fullsize || img.dataset.src || img.src;
-        }).filter(url => url && url.startsWith('http')))];
-      });
-
-      Logger.info(`Found ${imageUrls.length} images on Pixabay`);
-
-      // Calculate how many images to download from this source
-      const maxToDownload = remainingDownloads || this.totalDownloadLimit || this.options.maxDownloads;
-      Logger.info(`Will download up to ${maxToDownload} images from Pixabay`);
-      
-      // Limit the URLs to process based on the remaining downloads
-      const urlsToProcess = imageUrls.slice(0, maxToDownload);
-      Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
-      
-      // Download images
-      for (const url of urlsToProcess) {
-        // Double-check we haven't exceeded the limit (in case other sources added downloads)
-        if (this.downloadedCount >= this.totalDownloadLimit) {
-          Logger.info(`Maximum download limit of ${this.totalDownloadLimit} reached`);
-          break;
-        }
-
-        try {
-          await this.downloadImage(url);
-          this.trackProgress("Pixabay");
-        } catch (error) {
-          Logger.error(`Error downloading image: ${error.message}`);
-          this.errorCount++;
+      if (typeof providerInstance.getFullSizeImage === 'function') {
+        const fullSizeUrl = await providerInstance.getFullSizeImage(this.page, imageUrl);
+        if (fullSizeUrl && validators.isValidUrl(fullSizeUrl)) {
+          finalImageUrl = fullSizeUrl;
+          Logger.debug(`Using full-size URL from provider ${source}: ${finalImageUrl}`);
+        } else if (fullSizeUrl) {
+          Logger.warn(`Provider ${source} returned invalid full-size URL: ${fullSizeUrl}. Using original: ${imageUrl}`);
         }
       }
-      
-      if (this.downloadedCount === 0 && imageUrls.length > 0) {
-        Logger.warn('Found images but none were downloaded. They may not meet the size/dimension criteria.');
-      } else if (imageUrls.length === 0) {
-        Logger.warn('No images found on Pixabay for this query.');
-      }
-    } catch (error) {
-      Logger.error('Error crawling Pixabay:', error);
-      throw error;
+    } catch (err) {
+      Logger.warn(`Error getting full-size image from ${source} for ${imageUrl}: ${err.message}. Using original URL.`);
     }
-  }
 
-  /**
-   * Crawl Unsplash for images
-   * @param {number} remainingDownloads - Maximum number of images to download
-   */
-  async crawlUnsplash(remainingDownloads) {
+    const imageName = path.basename(new URL(finalImageUrl).pathname) || `${source.toLowerCase()}_${Date.now()}`;
+    let extension = path.extname(imageName).toLowerCase();
+    if (!['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extension)) {
+      extension = '.jpg'; // Default to .jpg if extension is missing or not typical
+    }
+    const baseName = imageName.substring(0, imageName.length - path.extname(imageName).length);
+    const finalImageName = `${source.toLowerCase()}_${baseName}${extension}`;
+    const filePath = path.join(this.options.outputDir, finalImageName);
+
+    // Deduplication: Check if file already exists
+    if (await fs.pathExists(filePath)) {
+      Logger.info(`Skipping duplicate image: ${finalImageName}`);
+      this.skippedCount++;
+      return false;
+    }
+
     try {
-      const query = encodeURIComponent(this.options.query);
-      const unsplashUrl = `https://unsplash.com/s/photos/${query}`;
-      Logger.info(`Searching Unsplash for: ${this.options.query}`);
-      Logger.debug(`Unsplash URL: ${unsplashUrl}`);
-
-      // Navigate to Unsplash
-      Logger.info('Navigating to Unsplash...');
-      await this.page.goto(unsplashUrl, { waitUntil: 'networkidle', timeout: this.options.timeout });
-      
-      // Accept cookies if the dialog appears
-      try {
-        const cookieSelectors = [
-          'button[data-test="tos-accept-button"]', 
-          'button[data-test="cookies-accept-button"]',
-          'button:has-text("Accept")',
-          'button:has-text("I Agree")'
-        ];
-        
-        for (const selector of cookieSelectors) {
-          const cookieButton = await this.page.$(selector);
-          if (cookieButton) {
-            Logger.info(`Found cookie dialog, clicking accept button (${selector})...`);
-            await cookieButton.click();
-            await this.page.waitForTimeout(1000);
-            break;
-          }
-        }
-      } catch (error) {
-        Logger.debug('No cookie dialog found or error accepting cookies:', error.message);
-      }
-
-      // Scroll to load more images
-      Logger.info('Scrolling to load more images...');
-      await this.autoScroll();
-      Logger.info('Scrolling completed');
-
-      // Extract image URLs using Playwright's evaluation
-      const imageUrls = await this.page.evaluate(() => {
-        // Try multiple selectors to find image containers
-        const selectors = [
-          'figure[itemprop="image"] img', 
-          'div[data-test="photo-grid-masonry-figure"] img',
-          'a[href*="/photos/"] img',
-          'img[srcset]'
-        ];
-        
-        let allImages = [];
-        
-        // Try each selector
-        for (const selector of selectors) {
-          const images = Array.from(document.querySelectorAll(selector));
-          if (images.length > 0) {
-            console.log(`Found ${images.length} images with selector: ${selector}`);
-            allImages = [...allImages, ...images];
-          }
-        }
-        
-        // Extract URLs from image elements
-        return [...new Set(allImages.map(img => {
-          if (img.srcset) {
-            // Parse srcset to get the largest image URL
-            const srcsetParts = img.srcset.split(',');
-            const lastPart = srcsetParts[srcsetParts.length - 1].trim();
-            const url = lastPart.split(' ')[0];
-            return url;
-          }
-          return img.src;
-        }).filter(url => url && url.startsWith('http')))];
-      });
-
-      Logger.info(`Found ${imageUrls.length} images on Unsplash`);
-
-      // Calculate how many images to download from this source
-      const maxToDownload = remainingDownloads || this.totalDownloadLimit || this.options.maxDownloads;
-      Logger.info(`Will download up to ${maxToDownload} images from Unsplash`);
-      
-      // Limit the URLs to process based on the remaining downloads
-      const urlsToProcess = imageUrls.slice(0, maxToDownload);
-      Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
-      
-      // Download images
-      for (const url of urlsToProcess) {
-        // Double-check we haven't exceeded the limit (in case other sources added downloads)
-        if (this.downloadedCount >= this.totalDownloadLimit) {
-          Logger.info(`Maximum download limit of ${this.totalDownloadLimit} reached`);
-          break;
-        }
-
-        try {
-          await this.downloadImage(url);
-          
-          this.trackProgress("Unsplash");
-        } catch (error) {
-          Logger.error(`Error downloading image: ${error.message}`);
-          this.errorCount++;
-        }
-      }
-      
-      if (this.downloadedCount === 0 && imageUrls.length > 0) {
-        Logger.warn('Found images but none were downloaded. They may not meet the size/dimension criteria.');
-      } else if (imageUrls.length === 0) {
-        Logger.warn('No images found on Unsplash for this query.');
-      }
-    } catch (error) {
-      Logger.error('Error crawling Unsplash:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Crawl Google Images for images
-   * @param {number} remainingDownloads - Maximum number of images to download
-   */
-  async crawlGoogleImages(remainingDownloads) {
-    try {
-      const query = encodeURIComponent(this.options.query);
-      const googleUrl = this.buildGoogleSearchUrl();
-      Logger.info(`Searching Google Images for: ${this.options.query}`);
-      Logger.debug(`Google URL: ${googleUrl}`);
-
-      // Navigate to Google Images
-      Logger.info('Navigating to Google Images...');
-      await this.page.goto(googleUrl, { waitUntil: 'networkidle', timeout: this.options.timeout });
-      
-      // Accept cookies if the dialog appears
-      try {
-        const cookieSelectors = [
-          'button[aria-label="Accept all"]', 
-          'button[aria-label="I agree"]',
-          'button:has-text("Accept all")',
-          'button:has-text("I agree")'
-        ];
-        
-        for (const selector of cookieSelectors) {
-          const cookieButton = await this.page.$(selector);
-          if (cookieButton) {
-            Logger.info(`Found cookie dialog, clicking accept button (${selector})...`);
-            await cookieButton.click();
-            await this.page.waitForTimeout(1000);
-            break;
-          }
-        }
-      } catch (error) {
-        Logger.debug('No cookie dialog found or error accepting cookies:', error.message);
-      }
-
-      // Scroll to load more images
-      Logger.info('Scrolling to load more images...');
-      await this.autoScroll();
-      Logger.info('Scrolling completed');
-
-      // Extract image URLs
-      const imageUrls = await this.extractGoogleImageUrls();
-      Logger.info(`Found ${imageUrls.length} images on Google Images`);
-
-      if (imageUrls.length === 0) {
-        // Try clicking on thumbnails to get more images
-        Logger.info('No images found with standard extraction, trying alternative approach...');
-        await this.clickGoogleThumbnails();
-        
-        // Try extracting again
-        const moreUrls = await this.extractGoogleImageUrls();
-        Logger.info(`Found ${moreUrls.length} additional images after clicking thumbnails`);
-        
-        imageUrls.push(...moreUrls);
-      }
-
-      // Calculate how many images to download from this source
-      const maxToDownload = remainingDownloads || this.totalDownloadLimit || this.options.maxDownloads;
-      Logger.info(`Will download up to ${maxToDownload} images from Google Images`);
-      
-      // Limit the URLs to process based on the remaining downloads
-      const urlsToProcess = imageUrls.slice(0, maxToDownload);
-      Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
-      
-      // Download images with robust thumbnail handling for Google Images
-      // Only process visible, real thumbnails in the result grid ('.isv-r img')
-      // DEBUG: Try multiple selectors to see which matches Google Images thumbnails
-      const selectors = [
-        '.isv-r img',
-        'img.rg_i',
-        'img[jsname="Q4LuWd"]',
-        'img[data-src]',
-        'img[src^="http"]'
-      ];
-      for (const selector of selectors) {
-        const handles = await this.page.$$(selector);
-        Logger.info(`[Selector test] Found ${handles.length} images for selector: ${selector}`);
-        for (let i = 0; i < Math.min(5, handles.length); i++) {
-          const src = await handles[i].getAttribute('src');
-          Logger.info(`[Selector test] ${selector} #${i+1} src: ${src}`);
-        }
-      }
-      // Robust dynamic filtering for Google Images thumbnails
-      let allImgHandles = await this.page.$$('img[src^="http"]');
-      Logger.info(`[Dynamic filter] Found ${allImgHandles.length} img[src^="http"] candidates.`);
-      let filteredHandles = [];
-      for (const handle of allImgHandles) {
-        const src = await handle.getAttribute('src');
-        if (!src) continue;
-        // Exclude SVG, logo, profile, or gstatic images
-        if (src.endsWith('.svg') || src.includes('logo') || src.includes('profile') || src.includes('gstatic.com')) continue;
-        // Check if visible
-        let isVisible = true;
-        if (handle.isVisible) {
-          try { isVisible = await handle.isVisible(); } catch { isVisible = false; }
-        }
-        if (!isVisible) continue;
-        // Check parent class
-        const parentClass = await handle.evaluate(img => img.parentElement ? img.parentElement.className : '');
-        const grandParentClass = await handle.evaluate(img => img.parentElement && img.parentElement.parentElement ? img.parentElement.parentElement.className : '');
-        // Heuristic: must have parent or grandparent with grid/result class or data attributes
-        if (
-          parentClass.match(/isv|Q4LuWd|rg_i|data-/) ||
-          grandParentClass.match(/isv|Q4LuWd|rg_i|data-/)
-        ) {
-          filteredHandles.push({handle, src, parentClass, grandParentClass});
-        }
-      }
-      Logger.info(`[Dynamic filter] Using ${filteredHandles.length} filtered thumbnails for download loop.`);
-      for (let i = 0; i < Math.min(10, filteredHandles.length); i++) {
-        Logger.info(`[Dynamic filter] Thumbnail #${i+1}: src=${filteredHandles[i].src}, parentClass=${filteredHandles[i].parentClass}, grandParentClass=${filteredHandles[i].grandParentClass}`);
-      }
-      // Use only the handles for download loop
-      let thumbnailHandles = filteredHandles.map(f => f.handle);
-      let processedCount = 0;
-      let skippedInvisible = 0, skippedNoSrc = 0, skippedTooSmall = 0, downloaded = 0;
-      for (const thumbHandle of thumbnailHandles) {
-        if (this.downloadedCount >= this.totalDownloadLimit || processedCount >= urlsToProcess.length) {
-          Logger.info(`Maximum download limit of ${this.totalDownloadLimit} reached or processed all URLs.`);
-          break;
-        }
-        // Check if handle is visible
-        const isVisible = await thumbHandle.isVisible ? await thumbHandle.isVisible() : true;
-        if (!isVisible) {
-          Logger.info('Skipping invisible thumbnail.');
-          skippedInvisible++;
-          continue;
-        }
-        // Get the src of the thumbnail
-        const url = await thumbHandle.getAttribute('src');
-        if (!url) {
-          Logger.info('Skipping thumbnail with no src.');
-          skippedNoSrc++;
-          continue;
-        }
-        Logger.debug(`Considering thumbnail: ${url}`);
-        processedCount++;
-        try {
-          // Validate dimensions of the thumbnail
-          let { width, height } = await this.page.evaluate(async (imgUrl) => {
-            return new Promise((resolve) => {
-              const img = new window.Image();
-              img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-              img.onerror = () => resolve({ width: 0, height: 0 });
-              img.src = imgUrl;
-            });
-          }, url);
-          Logger.debug(`Thumbnail dimensions: ${width}x${height} for ${url}`);
-
-          // DEBUG: Temporarily lower min dimension criteria for debugging
-          const minWidth = 100;
-          const minHeight = 100;
-
-          let finalUrl = url;
-          let usedFullSize = false;
-
-          if (width < minWidth || height < minHeight) {
-            Logger.debug(`Thumbnail too small (${width}x${height}), trying to extract full-size image for: ${url}`);
-            // Only click if the element is visible and enabled
-            try {
-              await thumbHandle.scrollIntoViewIfNeeded();
-              await thumbHandle.click({ timeout: 3000 });
-              await this.page.waitForSelector('img.n3VNCb', { timeout: 4000 });
-              // Extract the largest image from the detail panel
-              const largeImageUrl = await this.page.evaluate(() => {
-                const imgs = Array.from(document.querySelectorAll('img.n3VNCb'));
-                let maxArea = 0;
-                let best = '';
-                for (const img of imgs) {
-                  const w = img.naturalWidth || 0;
-                  const h = img.naturalHeight || 0;
-                  const area = w * h;
-                  if (img.src && !img.src.includes('gstatic.com') && area > maxArea) {
-                    maxArea = area;
-                    best = img.src;
-                  }
-                }
-                return best;
-              });
-              if (largeImageUrl) {
-                const { width: lw, height: lh } = await this.page.evaluate(async (imgUrl) => {
-                  return new Promise((resolve) => {
-                    const img = new window.Image();
-                    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-                    img.onerror = () => resolve({ width: 0, height: 0 });
-                    img.src = imgUrl;
-                  });
-                }, largeImageUrl);
-                Logger.debug(`Full-size image dimensions: ${lw}x${lh} for ${largeImageUrl}`);
-                if (lw >= minWidth && lh >= minHeight) {
-                  Logger.info(`Using full-size image (${lw}x${lh}) from detail panel: ${largeImageUrl}`);
-                  finalUrl = largeImageUrl;
-                  usedFullSize = true;
-                } else {
-                  Logger.warn(`Full-size image is still too small (${lw}x${lh}), skipping.`);
-                }
-              } else {
-                Logger.warn('Could not extract full-size image from detail panel, skipping.');
-              }
-              await this.page.keyboard.press('Escape');
-              await this.page.waitForTimeout(500);
-            } catch (clickErr) {
-              Logger.warn(`Could not click or extract full-size image: ${clickErr.message}`);
-              continue;
-            }
-          }
-
-          // Only download if the image is large enough
-          if ((usedFullSize && finalUrl) || (width >= minWidth && height >= minHeight)) {
-            Logger.info(`Attempting to download: ${finalUrl}`);
-            await this.downloadImage(finalUrl);
-            this.trackProgress("Google Images");
-            downloaded++;
-          } else {
-            Logger.info(`Skipped image (dimensions too small or no valid URL): ${finalUrl}`);
-            skippedTooSmall++;
-            this.skippedCount++;
-          }
-        } catch (error) {
-          Logger.error(`Error downloading image: ${error.message}`);
-          this.errorCount++;
-        }
-      }
-      
-      if (this.downloadedCount === 0 && imageUrls.length > 0) {
-        Logger.warn('Found images but none were downloaded. They may not meet the size/dimension criteria.');
-      } else if (imageUrls.length === 0) {
-        Logger.warn('No images found on Google Images for this query.');
-      }
-    } catch (error) {
-      Logger.error('Error crawling Google Images:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Extract image URLs from Google Images
-   */
-  async extractGoogleImageUrls() {
-    return await this.page.evaluate(() => {
-      // Try multiple selectors to find image elements
-      const selectors = [
-        'img.rg_i', 
-        'img[data-src]',
-        'img[src^="http"]',
-        'a img',
-        'div[data-hveid] img',
-        '.isv-r img'
-      ];
-      
-      let allImages = [];
-      
-      // Try each selector
-      for (const selector of selectors) {
-        const images = Array.from(document.querySelectorAll(selector));
-        if (images.length > 0) {
-          console.log(`Found ${images.length} images with selector: ${selector}`);
-          allImages = [...allImages, ...images];
-        }
-      }
-      
-      // Extract URLs from image elements
-      return [...new Set(allImages.map(img => {
-        return img.src || img.dataset.src || img.dataset.url || img.dataset.iurl;
-      }).filter(url => url && url.startsWith('http')))];
-    });
-  }
-
-  /**
-   * Click on Google image thumbnails to load more images
-   */
-  async clickGoogleThumbnails() {
-    try {
-      // Find thumbnails
-      const thumbnails = await this.page.$$('img[src^="http"], img[data-src^="http"]');
-      Logger.info(`Found ${thumbnails.length} thumbnails to try clicking`);
-      
-      // Try clicking on a few thumbnails
-      const maxClicks = Math.min(5, thumbnails.length);
-      for (let i = 0; i < maxClicks; i++) {
-        try {
-          Logger.info(`Clicking thumbnail ${i+1}...`);
-          await thumbnails[i].click();
-          await this.page.waitForTimeout(2000);
-          
-          // Close the viewer if it opened
-          await this.page.keyboard.press('Escape');
-          await this.page.waitForTimeout(1000);
-        } catch (error) {
-          Logger.warn(`Error clicking thumbnail ${i+1}:`, error.message);
-        }
-      }
-    } catch (error) {
-      Logger.warn('Error clicking thumbnails:', error.message);
-    }
-  }
-
-  /**
-   * Build Google Images search URL
-   */
-  buildGoogleSearchUrl() {
-    const baseUrl = 'https://www.google.com/search';
-    const params = new URLSearchParams({
-      q: this.options.query,
-      tbm: 'isch', // Image search
-      tbs: this.buildGoogleSearchParams(),
-      safe: this.options.safeSearch ? 'active' : 'images',
-      hl: 'en' // Set language to English for more consistent results
-    });
-    
-    // Add additional parameters to improve results
-    params.append('oq', this.options.query);
-    params.append('sclient', 'img');
-    
-    return `${baseUrl}?${params.toString()}`;
-  }
-
-  /**
-   * Build search parameters for Google Images
-   */
-  buildGoogleSearchParams() {
-    const params = [];
-    
-    // Image size parameters
-    if (this.options.minWidth || this.options.minHeight) {
-      params.push('isz:l'); // Large images
-      
-      if (this.options.minWidth && this.options.minHeight) {
-        params.push(`islt:${this.options.minWidth}x${this.options.minHeight}`);
-      }
-    } else {
-      params.push('isz:m'); // Medium images
-    }
-    
-    // Add file type filter if specified
-    if (this.options.fileTypes && this.options.fileTypes.length > 0) {
-      const fileTypeParam = `ift:${this.options.fileTypes[0]}`;
-      params.push(fileTypeParam);
-    }
-    
-    // Add color parameter for better results
-    params.push('ic:color');
-    
-    return params.join(',');
-  }
-
-  /**
-   * Auto-scroll the page to load more images
-   */
-  async autoScroll() {
-    // First scroll down quickly
-    await this.page.evaluate(async () => {
-      await new Promise((resolve) => {
-        let totalHeight = 0;
-        const distance = 300;
-        const timer = setInterval(() => {
-          window.scrollBy(0, distance);
-          totalHeight += distance;
-
-          if (totalHeight >= 3000) {
-            clearInterval(timer);
-            resolve();
-          }
-        }, 50);
-      });
-    });
-    
-    // Wait for content to load
-    await this.page.waitForTimeout(1000);
-    
-    // Then scroll more slowly to ensure all images load
-    await this.page.evaluate(async () => {
-      await new Promise((resolve) => {
-        let totalHeight = 0;
-        const distance = 100;
-        const timer = setInterval(() => {
-          window.scrollBy(0, distance);
-          totalHeight += distance;
-          
-          // Try to click "Show more results" button if it exists
-          const showMoreButton = document.querySelector('input[type="button"][value="Show more results"]');
-          if (showMoreButton) {
-            console.log('Clicking Show more results button');
-            showMoreButton.click();
-          }
-
-          if (totalHeight >= 5000) {
-            clearInterval(timer);
-            resolve();
-          }
-        }, 100);
-      });
-    });
-    
-    // Final wait to ensure images are loaded
-    await this.page.waitForTimeout(2000);
-  }
-
-  /**
-   * Download and save an image
-   * @param {string} url - Image URL
-   */
-  async downloadImage(url) {
-    try {
-      // Generate a unique filename
-      const urlObj = new URL(url);
-      const ext = path.extname(urlObj.pathname).split('?')[0] || '.jpg';
-      const filename = `img_${Date.now()}_${Math.floor(Math.random() * 1000)}${ext}`;
-      const outputPath = path.join(this.options.outputDir, filename);
-
-      // Download the image
-      const response = await this.page.goto(url, { waitUntil: 'networkidle', timeout: this.options.timeout });
-      const buffer = await response.body();
-      
-      // Check if the response is an image
-      const contentType = response.headers()['content-type'] || '';
-      if (!contentType.includes('image/')) {
-        Logger.debug(`Skipped non-image content: ${url} (${contentType})`);
-        this.skippedCount++;
-        return;
-      }
-
-      // Check image dimensions if needed
-      if (this.options.minWidth > 0 || this.options.minHeight > 0) {
-        try {
-          const metadata = await sharp(buffer).metadata();
-          if ((this.options.minWidth > 0 && metadata.width < this.options.minWidth) ||
-              (this.options.minHeight > 0 && metadata.height < this.options.minHeight)) {
-            this.skippedCount++;
-            Logger.debug(`Skipped image (dimensions too small): ${url}`);
-            return;
-          }
-        } catch (error) {
-          Logger.debug(`Error checking image dimensions: ${error.message}`);
+      // Use provider's validation method if available, otherwise skip this specific validation.
+      // This assumes validateImageMeetsCriteria is part of BaseProvider and handles network requests if needed.
+      if (typeof providerInstance.validateImageMeetsCriteria === 'function') {
+        const meetsCriteria = await providerInstance.validateImageMeetsCriteria(this.page, finalImageUrl, {
+          minWidth: this.options.minWidth,
+          minHeight: this.options.minHeight,
+          // minFileSize: this.options.minFileSize // File size check is after download
+        });
+        if (!meetsCriteria) {
+          Logger.info(`Image ${finalImageUrl} from ${source} does not meet dimension criteria. Skipping.`);
           this.skippedCount++;
-          return;
+          return false;
         }
+      } else {
+        Logger.warn(`Provider ${source} does not implement validateImageMeetsCriteria. Skipping pre-download dimension check.`);
       }
 
-      // Check file size
-      if (buffer.length < this.options.minFileSize) {
+      const response = await this.page.goto(finalImageUrl, { waitUntil: 'networkidle', timeout: this.options.timeout });
+      if (!response || !response.ok()) {
+        Logger.warn(`Failed to fetch image ${finalImageUrl} from ${source}. Status: ${response ? response.status() : 'unknown'}`);
         this.skippedCount++;
-        Logger.debug(`Skipped image (file size too small): ${url}`);
-        return;
+        return false;
+      }
+      const buffer = await response.body();
+
+      // Validate file size
+      if (this.options.minFileSize && buffer.length < this.options.minFileSize) {
+        Logger.info(`Image ${finalImageName} from ${source} is too small (${buffer.length} bytes). Skipping.`);
+        this.skippedCount++;
+        return false;
       }
 
-      // Save the image
-      await fs.writeFile(outputPath, buffer);
+      // Ensure image is valid and convert to JPEG if necessary (or handle as per options)
+      // For simplicity, saving directly. Add sharp processing if specific format/quality is needed.
+      await fs.writeFile(filePath, buffer);
       this.downloadedCount++;
-      
-      // Use the trackProgress utility to log progress consistently
-      this.trackProgress('current');
-      
-      // Check if we've reached the limit
-      if (this.downloadedCount >= this.totalDownloadLimit) {
-        Logger.info(`Maximum download limit of ${this.totalDownloadLimit} reached`);
-      }
+      Logger.success(`Downloaded: ${finalImageName} from ${source} (${this.downloadedCount}/${this.totalDownloadLimit})`);
+      this.trackProgress(source);
+      return true;
 
-      Logger.debug(`Downloaded: ${url} -> ${outputPath}`);
-      
-      // Navigate back to the search results
-      await this.page.goBack();
     } catch (error) {
-      Logger.error(`Error downloading image ${url}:`, error.message);
-      throw error;
+      Logger.error(`Error processing image ${finalImageUrl} from ${source}: ${error.message}`);
+      Logger.debug(error.stack);
+      this.errorCount++;
+      // Attempt to remove partially downloaded file
+      if (await fs.pathExists(filePath)) {
+        await fs.remove(filePath);
+      }
+      return false;
     }
+  }
+
+  // These specific crawl methods (crawlGoogleImages, crawlPixabay, crawlUnsplash) 
+  // should eventually be refactored into their respective provider classes 
+  // implementing the fetchImageUrls interface.
+  // For now, they are kept for reference but are no longer directly called in the main loop.
+
+  async crawlGoogleImages(limit) {
+    Logger.warn('PlaywrightCrawler.crawlGoogleImages is deprecated and should not be called directly. Logic pending migration to GoogleProvider.');
+    return 0; // Or throw error
+  }
+
+  async crawlPixabay(limit) {
+    Logger.warn('PlaywrightCrawler.crawlPixabay is deprecated and should not be called directly. Logic pending migration to PixabayProvider.');
+    return 0; // Or throw error
+  }
+
+  async crawlUnsplash(limit) {
+    Logger.warn('PlaywrightCrawler.crawlUnsplash is deprecated and should not be called directly. Logic pending migration to UnsplashProvider.');
+    return 0; // Or throw error
+  }
+
+  parseFileSize(sizeStr) {
+    // ... rest of the method remains the same ...
   }
 }
 

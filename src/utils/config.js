@@ -57,10 +57,27 @@ export const DEFAULT_CONFIG = {
     ],
     google: { enabled: true, maxResults: 100 },
     pexels: { enabled: false, maxResults: 30 },
-    bing: { enabled: false, maxResults: 30 },
+    bing: { 
+      enabled: false, 
+      maxResults: 30,
+      maxScrollsBing: 15,
+      scrollDelayBing: 2000,
+      lightboxDelayBing: 1500 
+    },
     flickr: { enabled: false, maxResults: 30 },
-    duckduckgo: { enabled: false, maxResults: 30 },
-    freeimages: { enabled: false, maxResults: 30 },
+    duckduckgo: { 
+      enabled: false, 
+      maxResults: 30,
+      maxScrollsDDG: 15,
+      loadMoreTimeoutDDG: 10000,
+      scrollDelayDDG: 2000
+    },
+    freeimages: { 
+      enabled: false, 
+      maxResults: 30,
+      maxScrollsFreeImages: 10,
+      scrollDelayFreeImages: 2500
+    },
     wikimedia: { enabled: false, maxResults: 30 },
     pixabay: { enabled: false, maxResults: 30 },
     unsplash: { enabled: false, maxResults: 30 }
@@ -72,6 +89,7 @@ class ConfigManager {
     this.config = null;
     this.configPath = path.join(process.cwd(), 'config.json');
     this.platform = getPlatformInfo();
+    this.cliProviderOverrides = null; // Store CLI provider choices
   }
 
   /**
@@ -213,6 +231,63 @@ class ConfigManager {
     } else {
       return this.config.platformSpecific.linux;
     }
+  }
+
+  /**
+   * Set provider overrides from CLI arguments.
+   * @param {string|null} providerArg - The --provider argument (e.g., 'google,bing' or 'all')
+   */
+  setCliProviderOverrides(providerArg) {
+    if (!providerArg) {
+      this.cliProviderOverrides = null;
+      return;
+    }
+    if (providerArg.toLowerCase() === 'all') {
+      this.cliProviderOverrides = 'all';
+    } else {
+      this.cliProviderOverrides = providerArg.toLowerCase().split(',').map(p => p.trim()).filter(p => p);
+    }
+  }
+
+  /**
+   * Get the effective provider configuration, considering CLI overrides.
+   * @returns {object} Provider configuration section
+   */
+  getEffectiveProvidersConfig() {
+    const baseProvidersConfig = { ...this.getConfig().providers }; // Deep copy might be needed if mutable
+
+    if (this.cliProviderOverrides === 'all') {
+      // Enable all providers in the order array
+      baseProvidersConfig.order.forEach(providerName => {
+        if (baseProvidersConfig[providerName]) {
+          baseProvidersConfig[providerName].enabled = true;
+        } else {
+          // Handle case where a provider in 'order' might not have a config block
+          baseProvidersConfig[providerName] = { enabled: true, maxResults: DEFAULT_CONFIG.providers[providerName]?.maxResults || 30 };
+        }
+      });
+    } else if (Array.isArray(this.cliProviderOverrides) && this.cliProviderOverrides.length > 0) {
+      // Disable all first, then enable only specified providers
+      Object.keys(baseProvidersConfig).forEach(key => {
+        if (key !== 'order' && baseProvidersConfig[key] && typeof baseProvidersConfig[key] === 'object') {
+          baseProvidersConfig[key].enabled = false;
+        }
+      });
+      this.cliProviderOverrides.forEach(providerName => {
+        if (baseProvidersConfig[providerName]) {
+          baseProvidersConfig[providerName].enabled = true;
+        } else {
+          // If CLI specifies a provider not in config, add and enable it (using defaults)
+          baseProvidersConfig[providerName] = { enabled: true, maxResults: DEFAULT_CONFIG.providers[providerName]?.maxResults || 30 };
+          // Also, ensure it's in the order array if not already present (add to end)
+          if (!baseProvidersConfig.order.includes(providerName)) {
+            baseProvidersConfig.order.push(providerName);
+          }
+        }
+      });
+    }
+    // If no CLI overrides, it returns the original config's provider section
+    return baseProvidersConfig;
   }
 }
 
