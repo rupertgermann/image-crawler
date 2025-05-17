@@ -3,18 +3,12 @@ import { promisify } from 'util';
 import { platform } from 'os';
 import { input, select } from '@inquirer/prompts';
 import inquirer from 'inquirer';
-import { existsSync, mkdirSync, readdirSync } from 'fs';
+import { readdirSync } from 'fs';
 import path from 'path';
 import Logger from './logger.js';
 
 const execAsync = promisify(exec);
 
-/**
- * Open a folder selection dialog
- * @param {string} title - Dialog title
- * @param {string} defaultPath - Default path to open
- * @returns {Promise<string>} Selected folder path
- */
 /**
  * Select a folder using CLI interface
  * @param {string} title - Dialog title
