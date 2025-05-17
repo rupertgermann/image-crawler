@@ -254,40 +254,35 @@ class ConfigManager {
    * @returns {object} Provider configuration section
    */
   getEffectiveProvidersConfig() {
-    const baseProvidersConfig = { ...this.getConfig().providers }; // Deep copy might be needed if mutable
+    const currentConfig = this.getConfig(); // This already merges DEFAULT_CONFIG and this.config
+    let effectiveProviders = currentConfig.providers;
 
-    if (this.cliProviderOverrides === 'all') {
-      // Enable all providers in the order array
-      baseProvidersConfig.order.forEach(providerName => {
-        if (baseProvidersConfig[providerName]) {
-          baseProvidersConfig[providerName].enabled = true;
-        } else {
-          // Handle case where a provider in 'order' might not have a config block
-          baseProvidersConfig[providerName] = { enabled: true, maxResults: DEFAULT_CONFIG.providers[providerName]?.maxResults || 30 };
+    if (this.cliProviderOverrides && this.cliProviderOverrides.length > 0) {
+      // Convert CLI overrides to a partial config structure
+      const cliConfigPartial = { providers: { order: [], ...currentConfig.providers } }; // Start with current provider settings
+
+      // Disable all providers first
+      for (const providerName in cliConfigPartial.providers) {
+        if (providerName !== 'order' && typeof cliConfigPartial.providers[providerName] === 'object') {
+          cliConfigPartial.providers[providerName].enabled = false;
         }
-      });
-    } else if (Array.isArray(this.cliProviderOverrides) && this.cliProviderOverrides.length > 0) {
-      // Disable all first, then enable only specified providers
-      Object.keys(baseProvidersConfig).forEach(key => {
-        if (key !== 'order' && baseProvidersConfig[key] && typeof baseProvidersConfig[key] === 'object') {
-          baseProvidersConfig[key].enabled = false;
+      }
+      
+      // Enable only the CLI-specified providers and set them as the order
+      cliConfigPartial.providers.order = [...this.cliProviderOverrides]; // Use a copy
+      this.cliProviderOverrides.forEach(pName => {
+        if (!cliConfigPartial.providers[pName]) {
+          cliConfigPartial.providers[pName] = {}; // Ensure provider config object exists
         }
+        cliConfigPartial.providers[pName].enabled = true;
       });
-      this.cliProviderOverrides.forEach(providerName => {
-        if (baseProvidersConfig[providerName]) {
-          baseProvidersConfig[providerName].enabled = true;
-        } else {
-          // If CLI specifies a provider not in config, add and enable it (using defaults)
-          baseProvidersConfig[providerName] = { enabled: true, maxResults: DEFAULT_CONFIG.providers[providerName]?.maxResults || 30 };
-          // Also, ensure it's in the order array if not already present (add to end)
-          if (!baseProvidersConfig.order.includes(providerName)) {
-            baseProvidersConfig.order.push(providerName);
-          }
-        }
-      });
+      
+      // Deep merge this partial config with the existing effectiveProviders
+      effectiveProviders = this.deepMerge(JSON.parse(JSON.stringify(currentConfig.providers)), cliConfigPartial.providers);
+      // Explicitly set order from CLI
+      effectiveProviders.order = [...this.cliProviderOverrides]; 
     }
-    // If no CLI overrides, it returns the original config's provider section
-    return baseProvidersConfig;
+    return effectiveProviders;
   }
 }
 

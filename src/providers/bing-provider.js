@@ -119,8 +119,44 @@ export default class BingProvider extends BaseProvider {
   async getFullSizeImage(page, previewImageUrl) {
     Logger.debug(`[${this.name}] Attempting to get full-size image for: ${previewImageUrl}`);
     try {
-      // Find the 'a.iusc' link that contains the previewImageUrl in its 'm' attribute or its img child's src
-      // This is a bit complex as previewImageUrl might be the 'murl' or a direct 'src'.
+      // --- BEGIN ADDED OVERLAY HANDLING ---
+      const overlayIframeSelector = 'iframe#OverlayIFrame';
+      const overlayFrame = page.frameLocator(overlayIframeSelector);
+
+      if (await page.locator(overlayIframeSelector).isVisible({ timeout: 2000 })) {
+        Logger.info(`[${this.name}] Overlay iframe detected. Attempting to find and click consent/close button within it.`);
+        // Common selectors for accept/close buttons within cookie/consent iframes
+        const consentButtonSelectors = [
+          'button[id*="accept" i]',
+          'button[aria-label*="accept" i]',
+          'button[aria-label*="agree" i]',
+          'button:has-text(/accept|agree|got it|confirm/i)',
+          'button[id*="close" i]',
+          'button[aria-label*="close" i]',
+        ];
+
+        let closedOverlay = false;
+        for (const btnSelector of consentButtonSelectors) {
+          const buttonInFrame = overlayFrame.locator(btnSelector).first();
+          if (await buttonInFrame.isVisible({ timeout: 500 })) {
+            Logger.info(`[${this.name}] Found potential consent button in iframe: ${btnSelector}. Clicking it.`);
+            try {
+              await buttonInFrame.click({ timeout: 3000 });
+              await page.waitForTimeout(1000); // Wait for overlay to potentially close
+              closedOverlay = true;
+              Logger.info(`[${this.name}] Clicked consent button in iframe.`);
+              break; 
+            } catch (clickError) {
+              Logger.warn(`[${this.name}] Error clicking consent button ${btnSelector} in iframe: ${clickError.message}`);
+            }
+          }
+        }
+        if (!closedOverlay) {
+            Logger.warn(`[${this.name}] Overlay iframe was present, but no known consent/close button was found or successfully clicked within it.`);
+        }
+      }
+      // --- END ADDED OVERLAY HANDLING ---
+
       const targetLinkLocator = page.locator(`a.iusc:has(img[src="${previewImageUrl}"]), a.iusc[m*="${previewImageUrl}"]`).first();
       
       if (!await targetLinkLocator.isVisible({timeout: 5000})) {
