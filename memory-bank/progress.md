@@ -33,6 +33,36 @@
 - Improved final reporting to show downloads per source and overall status
 - Updated README to document the new options and behavior
 
+## README Enhancement (2025-05-17)
+
+### Implemented Features:
+- **Comprehensive README Update:** Revamped `README.md` for better clarity, engagement, and contributor guidance.
+  - Added "Why Image Crawler?" section to explain project motivation.
+  - Added "Showcase / Demo" section with a placeholder for a visual demonstration.
+  - Added "Tech Stack" section listing key technologies.
+  - Added "Contributing" section with guidelines for bug reports, feature suggestions, and pull requests.
+  - Updated the list of supported image providers (Google, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia) in descriptions and examples.
+  - Included example badges (npm version, downloads, build status).
+  - Clarified CLI usage, especially for multiple providers.
+
+### Encountered Errors:
+- None during the README update itself.
+
+### How Errors Were Fixed:
+- N/A for this specific feature implementation.
+
+## README Update (2025-05-17) - Authorship & Demo Note
+
+### Implemented Features:
+- Added "A Note on Authorship" section to `README.md` highlighting AI development (Windsurf & AI models).
+- Updated the "Showcase / Demo" section in `README.md` to state that a demo GIF is planned, removing the previous placeholder link.
+
+### Encountered Errors:
+- None.
+
+### How Errors Were Fixed:
+- N/A.
+
 # Progress Update - 2025-05-16
 
 ## Latest Changes

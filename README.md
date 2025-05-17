@@ -1,7 +1,20 @@
 # Image Crawler
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![GitHub](https://img.shields.io/badge/GitHub-rupertgermann/image--crawler-blue)](https://github.com/rupertgermann/image-crawler)
+[![npm version](https://badge.fury.io/js/image-crawler.svg)](https://badge.fury.io/js/image-crawler) [![npm downloads](https://img.shields.io/npm/dm/image-crawler.svg)](https://www.npmjs.com/package/image-crawler) [![Build Status](https://travis-ci.org/rupertgermann/image-crawler.svg?branch=master)](https://travis-ci.org/rupertgermann/image-crawler)
 
 A cross-platform tool for collecting images from local drives or the web.
+
+## A Note on Authorship
+
+This application was proudly developed 100% by AI, leveraging the capabilities of advanced coding models and the Windsurf AI engineering platform. This project showcases the power of AI in modern software development.
+
+## Why Image Crawler?
+
+Image Crawler was created to provide a simple, yet powerful and unified interface for downloading high-quality images from various sources or organizing local image collections efficiently.
+
+## Showcase / Demo
+
+(A visual demonstration GIF showcasing the crawler in action is planned for a future update!)
 
 ## Features
 
@@ -13,7 +26,7 @@ A cross-platform tool for collecting images from local drives or the web.
   - Windows drive selection support
 
 - **Web Mode**: Download images from multiple sources
-  - Supports Pixabay, Unsplash, and Google Images
+  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, and Wikimedia.
   - Search by keyword with advanced filters
   - Safe search (enabled by default)
   - Headless browser mode
@@ -75,11 +88,14 @@ image-crawler local --min-width 800 --min-height 600 --max-files 100
 Download images from the web. A search query is required:
 
 ```bash
-# Basic usage with default provider (tries all sources)
+# Basic usage (tries all enabled sources by default)
 image-crawler web "nature landscape" --max-downloads 50
 
-# Specify provider (pixabay, unsplash, or google)
+# Specify a single provider
 image-crawler web "mountain lake" --provider unsplash
+
+# Specify multiple providers (comma-separated)
+image-crawler web "city lights" --provider bing,pexels --max-downloads 20
 
 # With size and type filters
 image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types jpg,png
@@ -95,7 +111,7 @@ image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types jpg,p
 - `--file-types <types>`: Comma-separated list of file extensions (default: `jpg,jpeg,png,gif,webp`)
 - `--headless`: Run browser in headless mode (default: `true`)
 - `--timeout <ms>`: Browser operation timeout in milliseconds (default: `30000`)
-- `--provider <name>`: Image provider (`pixabay`, `unsplash`, `google`, or `all`)
+- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`. Default is 'all' configured providers.
 
 ### Interactive Mode
 
@@ -161,6 +177,34 @@ npm test
 - **Browser timeout errors**: Increase the timeout with `--timeout 60000`
 - **Permission issues**: Ensure the output directory is writable
 - **Headless mode issues**: Try running with `--no-headless` if you experience browser-related problems
+
+## Tech Stack
+
+- Node.js
+- Playwright (for Web Mode)
+- Various CLI helper libraries (e.g., yargs, chalk, inquirer)
+
+## Contributing
+
+Contributions are welcome! Whether it's reporting a bug, suggesting a feature, or submitting a pull request, your help is appreciated.
+
+### Reporting Bugs
+
+If you find a bug, please open an issue on GitHub and provide detailed steps to reproduce it. Include information about your OS, Node.js version, and the command you ran.
+
+### Suggesting Enhancements
+
+Have an idea to make Image Crawler better? Open an issue to discuss it. We're always looking for ways to improve.
+
+### Pull Requests
+
+1.  Fork the repository.
+2.  Create a new branch (`git checkout -b feature/YourFeature` or `bugfix/YourBugfix`).
+3.  Make your changes.
+4.  Ensure your code adheres to the existing style and any linting configurations (if present).
+5.  Write clear and concise commit messages.
+6.  Push to your branch (`git push origin feature/YourFeature`).
+7.  Open a pull request.
 
 ## Repository
 
