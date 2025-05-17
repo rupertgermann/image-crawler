@@ -17,9 +17,17 @@ class LocalCrawler {
     // Merge: CLI/explicit options > config file > DEFAULT_CONFIG
     const config = configManager.getConfig();
     this.options = { ...DEFAULT_CONFIG, ...config, ...options };
+    
+    // Ensure maxFiles is set (use maxDownloads as fallback if needed)
+    if (!this.options.maxFiles && this.options.maxDownloads) {
+      this.options.maxFiles = this.options.maxDownloads;
+    } else if (!this.options.maxFiles) {
+      this.options.maxFiles = 50; // Absolute fallback
+    }
+    
     // Special case: sourceDir/platform-specific
     if (!this.options.sourceDir) {
-      this.options.sourceDir = configManager.getPlatformSettings().defaultScanPath;
+      this.options.sourceDir = configManager.getPlatformSettings()?.defaultScanPath || path.join(platform.homedir, 'Pictures');
     }
     if (!this.options.outputDir) {
       this.options.outputDir = pathUtils.getDefaultDownloadDir();

@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 // Default configuration
 export const DEFAULT_CONFIG = {
   // General settings
-  maxDownloads: 50,
+  maxDownloads: 100,
   minWidth: 800,
   minHeight: 600,
   minFileSize: '100KB',
@@ -107,11 +107,46 @@ class ConfigManager {
   }
 
   /**
+   * Deep merge utility for config objects
+   * @param {Object} target - Target object to merge into
+   * @param {...Object} sources - Source objects to merge from
+   * @returns {Object} Merged object
+   */
+  deepMerge(target, ...sources) {
+    if (!sources.length) return target;
+    const source = sources.shift();
+    
+    if (source === null || typeof source !== 'object') return this.deepMerge(target, ...sources);
+    
+    if (target === null || typeof target !== 'object') {
+      target = {};
+    }
+    
+    Object.keys(source).forEach(key => {
+      const targetValue = target[key];
+      const sourceValue = source[key];
+      
+      if (Array.isArray(sourceValue)) {
+        target[key] = Array.isArray(targetValue) ? targetValue.concat(sourceValue) : sourceValue;
+      } else if (sourceValue && typeof sourceValue === 'object') {
+        target[key] = this.deepMerge(
+          Object.prototype.toString.call(targetValue) === '[object Object]' ? targetValue : {},
+          sourceValue
+        );
+      } else {
+        target[key] = sourceValue;
+      }
+    });
+    
+    return this.deepMerge(target, ...sources);
+  }
+
+  /**
    * Get the current configuration (deep merged with DEFAULT_CONFIG)
    */
   getConfig(overrides = {}) {
     // Always return a config with all DEFAULT_CONFIG keys
-    return deepMerge(
+    return this.deepMerge(
       JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
       this.config || {},
       overrides
