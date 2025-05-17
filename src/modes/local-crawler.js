@@ -79,7 +79,7 @@ class LocalCrawler {
       }
 
       // Initialize seen hashes from existing files (recursive)
-      async function scanHashes(dir) {
+      const scanHashes = async (dir) => {
         const entries = await fs.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
           const fullPath = path.join(dir, entry.name);
@@ -90,8 +90,8 @@ class LocalCrawler {
             this.seenHashes.add(h);
           }
         }
-      }
-      await scanHashes.call(this, this.options.outputDir);
+      };
+      await scanHashes(this.options.outputDir);
 
       // Start scanning
       Logger.info(`Scanning directory: ${this.options.sourceDir}`);
