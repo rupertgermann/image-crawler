@@ -1,3 +1,24 @@
+# Progress Update - 2025-05-18
+
+## Latest Changes
+- Fixed bug where maxDownloads could be 'undefined' or NaN in web mode and logs by ensuring both index.js and PlaywrightCrawler always set a valid number.
+- Now, maxDownloads is always a number, using CLI input if valid or falling back to config/default (50).
+- Prevents undefined/NaN values in logs and logic, ensuring robust, predictable behavior.
+
+### Implemented Features
+- Robust handling and validation of maxDownloads for web crawling mode.
+- Defensive programming in both CLI setup and crawler constructor for consistent option passing.
+
+### Encountered Errors
+- Crawler and logs sometimes showed 'undefined' or NaN for download limits if the CLI option was omitted or invalid.
+
+### How We Fixed It
+- Added logic in index.js to always pass a valid number for maxDownloads to the crawler.
+- Updated PlaywrightCrawler constructor to validate and default maxDownloads if needed.
+- Confirmed via code review that logs and crawler logic now always use a valid number for this limit.
+
+---
+
 # Progress Update - 2025-05-17
 
 ## Latest Changes

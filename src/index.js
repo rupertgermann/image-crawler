@@ -207,10 +207,16 @@ program
 
       // Initialize and start the web crawler
       Logger.info('Initializing web crawler with Playwright...');
+      const config = configManager.getConfig() || {};
+      const defaultMaxDownloads = config.maxDownloads || 50;
+      const maxDownloads =
+        typeof options.maxDownloads === 'number' && !isNaN(options.maxDownloads)
+          ? options.maxDownloads
+          : defaultMaxDownloads;
       const crawlerOptions = {
         query,
         outputDir,
-        maxDownloads: options.maxDownloads,
+        maxDownloads,
         minWidth: options.minWidth,
         minHeight: options.minHeight,
         minFileSize: options.minSize,

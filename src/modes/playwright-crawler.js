@@ -21,9 +21,13 @@ class PlaywrightCrawler {
     const defaultMaxDownloads = config.maxDownloads || 50;
     
     this.options = {
+      ...options,
       query: options.query || 'nature',
       outputDir: options.outputDir || pathUtils.getDefaultDownloadDir(),
-      maxDownloads: options.maxDownloads || defaultMaxDownloads,
+      maxDownloads:
+        typeof options.maxDownloads === 'number' && !isNaN(options.maxDownloads)
+          ? options.maxDownloads
+          : defaultMaxDownloads,
       minWidth: options.minWidth || 800,
       minHeight: options.minHeight || 600,
       minFileSize: options.minFileSize || 10240, // 10KB
@@ -284,11 +288,7 @@ class PlaywrightCrawler {
 
         try {
           await this.downloadImage(url);
-          
-          // Log progress every 5 images
-          if (this.downloadedCount % 5 === 0) {
-            Logger.info(`Downloaded ${this.downloadedCount}/${this.options.maxDownloads} images...`);
-          }
+          this.trackProgress("Pixabay");
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;
@@ -403,10 +403,7 @@ class PlaywrightCrawler {
         try {
           await this.downloadImage(url);
           
-          // Log progress every 5 images
-          if (this.downloadedCount % 5 === 0) {
-            Logger.info(`Downloaded ${this.downloadedCount}/${this.options.maxDownloads} images...`);
-          }
+          this.trackProgress("Unsplash");
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;
@@ -501,10 +498,8 @@ class PlaywrightCrawler {
         try {
           await this.downloadImage(url);
           
-          // Log progress every 5 images
-          if (this.downloadedCount % 5 === 0) {
-            Logger.info(`Downloaded ${this.downloadedCount}/${this.options.maxDownloads} images...`);
-          }
+          this.trackProgress("Google Images");
+          this.trackProgress("Google Images");
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;
