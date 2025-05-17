@@ -102,24 +102,20 @@ program
 
       // Initialize and start the local crawler
       Logger.info('Initializing local crawler...');
-      const crawlerOptions = {
-        sourceDir: options.source,
-        outputDir,
-        minWidth: options.minWidth,
-        minHeight: options.minHeight,
-        minFileSize: options.minSize,
-        maxFiles: options.maxFiles || options.maxDownloads, // Use either option
-        preserveStructure: options.preserveStructure,
-        fileTypes: options.fileTypes
-      };
-      
-      // Log the max files limit
-      if (crawlerOptions.maxFiles) {
-        Logger.info(`Maximum file limit set to: ${crawlerOptions.maxFiles} files`);
+      const config = configManager.getConfig();
+      const { DEFAULT_CONFIG } = await import('./utils/config.js');
+      const mergedOptions = { ...DEFAULT_CONFIG, ...config, ...options, sourceDir: options.source, outputDir };
+      // maxFiles: prefer CLI, fallback to config/default
+      if (!mergedOptions.maxFiles && mergedOptions.maxDownloads) {
+        mergedOptions.maxFiles = mergedOptions.maxDownloads;
       }
-      Logger.debug('Crawler options:', JSON.stringify(crawlerOptions, null, 2));
+      // Log the max files limit
+      if (mergedOptions.maxFiles) {
+        Logger.info(`Maximum file limit set to: ${mergedOptions.maxFiles} files`);
+      }
+      Logger.debug('Crawler options:', JSON.stringify(mergedOptions, null, 2));
       
-      const crawler = new LocalCrawler(crawlerOptions);
+      const crawler = new LocalCrawler(mergedOptions);
 
       Logger.info('Starting local crawler...');
       await crawler.start();
@@ -207,27 +203,16 @@ program
 
       // Initialize and start the web crawler
       Logger.info('Initializing web crawler with Playwright...');
-      const config = configManager.getConfig() || {};
-      const defaultMaxDownloads = config.maxDownloads || 50;
-      const maxDownloads =
-        typeof options.maxDownloads === 'number' && !isNaN(options.maxDownloads)
-          ? options.maxDownloads
-          : defaultMaxDownloads;
-      const crawlerOptions = {
-        query,
-        outputDir,
-        maxDownloads,
-        minWidth: options.minWidth,
-        minHeight: options.minHeight,
-        minFileSize: options.minSize,
-        safeSearch: options.safeSearch,
-        headless: options.headless,
-        timeout: options.timeout,
-        fileTypes: options.fileTypes
-      };
-      Logger.debug('Crawler options:', JSON.stringify(crawlerOptions, null, 2));
+      const config = configManager.getConfig();
+      const { DEFAULT_CONFIG } = await import('./utils/config.js');
+      const mergedOptions = { ...DEFAULT_CONFIG, ...config, ...options, query, outputDir };
+      // maxDownloads: prefer CLI, fallback to config/default
+      if (!mergedOptions.maxDownloads && mergedOptions.maxFiles) {
+        mergedOptions.maxDownloads = mergedOptions.maxFiles;
+      }
+      Logger.debug('Crawler options:', JSON.stringify(mergedOptions, null, 2));
       
-      const crawler = new PlaywrightCrawler(crawlerOptions);
+      const crawler = new PlaywrightCrawler(mergedOptions);
 
       Logger.info('Starting web crawler...');
       await crawler.start();

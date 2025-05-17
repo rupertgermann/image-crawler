@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Default configuration
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG = {
   // General settings
   maxDownloads: 50,
   minWidth: 800,
@@ -107,10 +107,15 @@ class ConfigManager {
   }
 
   /**
-   * Get the current configuration
+   * Get the current configuration (deep merged with DEFAULT_CONFIG)
    */
-  getConfig() {
-    return this.config;
+  getConfig(overrides = {}) {
+    // Always return a config with all DEFAULT_CONFIG keys
+    return deepMerge(
+      JSON.parse(JSON.stringify(DEFAULT_CONFIG)),
+      this.config || {},
+      overrides
+    );
   }
 
   /**

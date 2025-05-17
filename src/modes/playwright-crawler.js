@@ -14,32 +14,15 @@ const __dirname = path.dirname(__filename);
 /**
  * PlaywrightCrawler class for web image crawling using Playwright
  */
+import { DEFAULT_CONFIG } from '../utils/config.js';
+
 class PlaywrightCrawler {
   constructor(options = {}) {
-    // Get default maxDownloads from config if available
-    const config = configManager.getConfig() || {};
-    const defaultMaxDownloads = config.maxDownloads || 50;
-    
-    this.options = {
-      ...options,
-      query: options.query || 'nature',
-      outputDir: options.outputDir || pathUtils.getDefaultDownloadDir(),
-      maxDownloads:
-        typeof options.maxDownloads === 'number' && !isNaN(options.maxDownloads)
-          ? options.maxDownloads
-          : defaultMaxDownloads,
-      minWidth: options.minWidth || 800,
-      minHeight: options.minHeight || 600,
-      minFileSize: options.minFileSize || 10240, // 10KB
-      safeSearch: options.safeSearch !== false,
-      headless: options.headless !== false,
-      timeout: options.timeout || 30000,
-      fileTypes: options.fileTypes || ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-      ...options
-    };
-
-    // Set the total download limit as a class property for consistent access
+    // Merge: CLI/explicit options > config file > DEFAULT_CONFIG
+    const config = configManager.getConfig();
+    this.options = { ...DEFAULT_CONFIG, ...config, ...options };
     this.totalDownloadLimit = this.options.maxDownloads;
+
     
     this.downloadedCount = 0;
     this.skippedCount = 0;

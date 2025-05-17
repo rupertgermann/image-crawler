@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+// This module has been removed. Use PlaywrightCrawler instead.
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,19 +11,13 @@ import configManager from '../utils/config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { DEFAULT_CONFIG } from '../utils/config.js';
+
 class WebCrawler {
   constructor(options = {}) {
-    this.options = {
-      query: options.query || 'nature',
-      outputDir: options.outputDir || pathUtils.getDefaultDownloadDir(),
-      maxDownloads: options.maxDownloads || 100,
-      minWidth: options.minWidth || 800,
-      minHeight: options.minHeight || 600,
-      minFileSize: options.minFileSize || 10240, // 10KB
-      safeSearch: options.safeSearch !== false,
-      headless: options.headless !== false,
-      ...options
-    };
+    // Merge: CLI/explicit options > config file > DEFAULT_CONFIG
+    const config = configManager.getConfig();
+    this.options = { ...DEFAULT_CONFIG, ...config, ...options };
 
     this.downloadedCount = 0;
     this.skippedCount = 0;

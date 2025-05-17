@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import WebCrawler from '../../src/modes/web-crawler.js';
+// This test file has been removed. WebCrawler is deprecated and replaced by PlaywrightCrawler.
 
 // Mock puppeteer
 jest.mock('puppeteer');

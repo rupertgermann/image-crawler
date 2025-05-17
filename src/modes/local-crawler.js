@@ -10,24 +10,20 @@ import configManager from '../utils/config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { DEFAULT_CONFIG } from '../utils/config.js';
+
 class LocalCrawler {
   constructor(options = {}) {
-    // Get default maxFiles from config if available
-    const config = configManager.getConfig() || {};
-    const defaultMaxFiles = config.maxDownloads || 50;
-    
-    this.options = {
-      sourceDir: options.sourceDir || configManager.getPlatformSettings().defaultScanPath,
-      outputDir: options.outputDir || pathUtils.getDefaultDownloadDir(),
-      minWidth: options.minWidth || 800,
-      minHeight: options.minHeight || 600,
-      minFileSize: options.minFileSize || 0,
-      fileTypes: options.fileTypes || ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-      maxFiles: options.maxFiles || defaultMaxFiles,
-      preserveStructure: options.preserveStructure === true, // Default to flat structure
-      ...options
-    };
-
+    // Merge: CLI/explicit options > config file > DEFAULT_CONFIG
+    const config = configManager.getConfig();
+    this.options = { ...DEFAULT_CONFIG, ...config, ...options };
+    // Special case: sourceDir/platform-specific
+    if (!this.options.sourceDir) {
+      this.options.sourceDir = configManager.getPlatformSettings().defaultScanPath;
+    }
+    if (!this.options.outputDir) {
+      this.options.outputDir = pathUtils.getDefaultDownloadDir();
+    }
     this.fileCount = 0;
     this.processedCount = 0; // Track total files processed, not just copied
     this.skippedFiles = 0;
