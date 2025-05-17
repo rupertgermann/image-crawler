@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 import Logger from '../utils/logger.js';
+import { computeFileHash, computeBufferHash } from '../utils/hash-utils.js';
 import * as validators from '../utils/validators.js';
 import * as pathUtils from '../utils/paths.js';
 import configManager from '../utils/config.js';
@@ -82,6 +83,17 @@ class PlaywrightCrawler {
       const outputValidation = await validators.validateWritable(this.options.outputDir);
       if (!outputValidation.valid) {
         throw new Error(`Output directory is not writable: ${outputValidation.message}`);
+      }
+
+      // Initialize seen hashes from existing files
+      this.seenHashes = new Set();
+      const existingFiles = await fs.readdir(this.options.outputDir);
+      for (const fname of existingFiles) {
+        const fpath = path.join(this.options.outputDir, fname);
+        if (await fs.pathExists(fpath)) {
+          const h = await computeFileHash(fpath);
+          this.seenHashes.add(h);
+        }
       }
 
       // Launch browser
@@ -247,13 +259,6 @@ class PlaywrightCrawler {
     const finalImageName = `${source.toLowerCase()}_${baseName}${extension}`;
     const filePath = path.join(this.options.outputDir, finalImageName);
 
-    // Deduplication: Check if file already exists
-    if (await fs.pathExists(filePath)) {
-      Logger.info(`Skipping duplicate image: ${finalImageName}`);
-      this.skippedCount++;
-      return false;
-    }
-
     try {
       // Use provider's validation method if available, otherwise skip this specific validation.
       // This assumes validateImageMeetsCriteria is part of BaseProvider and handles network requests if needed.
@@ -286,6 +291,15 @@ class PlaywrightCrawler {
         this.skippedCount++;
         return false;
       }
+
+      // Deduplication: skip if buffer hash seen
+      const hash = await computeBufferHash(buffer);
+      if (this.seenHashes.has(hash)) {
+        Logger.info(`Skipping duplicate image by hash: ${finalImageName}`);
+        this.skippedCount++;
+        return false;
+      }
+      this.seenHashes.add(hash);
 
       // Ensure image is valid and convert to JPEG if necessary (or handle as per options)
       // For simplicity, saving directly. Add sharp processing if specific format/quality is needed.

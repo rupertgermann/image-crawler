@@ -6,6 +6,7 @@ import Logger from '../utils/logger.js';
 import * as validators from '../utils/validators.js';
 import * as pathUtils from '../utils/paths.js';
 import configManager from '../utils/config.js';
+import { computeFileHash } from '../utils/hash-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,7 @@ class LocalCrawler {
     this.processedCount = 0; // Track total files processed, not just copied
     this.skippedFiles = 0;
     this.errorFiles = 0;
+    this.seenHashes = new Set();
     
     Logger.info(`Maximum file limit set to: ${this.options.maxFiles} files`);
   }
@@ -75,6 +77,21 @@ class LocalCrawler {
       if (!outputValidation.valid) {
         throw new Error(`Output directory is not writable: ${outputValidation.message}`);
       }
+
+      // Initialize seen hashes from existing files (recursive)
+      async function scanHashes(dir) {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await scanHashes(fullPath);
+          } else if (entry.isFile()) {
+            const h = await computeFileHash(fullPath);
+            this.seenHashes.add(h);
+          }
+        }
+      }
+      await scanHashes.call(this, this.options.outputDir);
 
       // Start scanning
       Logger.info(`Scanning directory: ${this.options.sourceDir}`);
@@ -180,6 +197,15 @@ class LocalCrawler {
           return;
         }
       }
+
+      // Deduplication: skip if hash seen
+      const fileHash = await computeFileHash(filePath);
+      if (this.seenHashes.has(fileHash)) {
+        Logger.info(`Skipping duplicate local file by hash: ${path.basename(filePath)}`);
+        this.skippedFiles++;
+        return;
+      }
+      this.seenHashes.add(fileHash);
 
       // Determine output path
       let outputPath;
