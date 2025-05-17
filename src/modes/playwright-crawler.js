@@ -216,7 +216,7 @@ class PlaywrightCrawler {
    * @returns {Promise<boolean>} - True if downloaded, false otherwise
    */
   async processImage(imageUrl, source, providerInstance) {
-    if (!validators.isValidUrl(imageUrl)) {
+    if (!validators.validateUrl(imageUrl).valid) {
       Logger.warn(`Skipping invalid URL: ${imageUrl}`);
       this.skippedCount++;
       return false;
@@ -227,7 +227,7 @@ class PlaywrightCrawler {
     try {
       if (typeof providerInstance.getFullSizeImage === 'function') {
         const fullSizeUrl = await providerInstance.getFullSizeImage(this.page, imageUrl);
-        if (fullSizeUrl && validators.isValidUrl(fullSizeUrl)) {
+        if (fullSizeUrl && validators.validateUrl(fullSizeUrl).valid) {
           finalImageUrl = fullSizeUrl;
           Logger.debug(`Using full-size URL from provider ${source}: ${finalImageUrl}`);
         } else if (fullSizeUrl) {
