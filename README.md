@@ -8,6 +8,7 @@ A cross-platform tool for collecting images from local drives or the web.
   - Filter by file type, size, and dimensions
   - Preserve directory structure
   - Interactive folder selection
+  - Deduplicate images by content hash (skips existing files)
   - Windows drive selection support
 
 - **Web Mode**: Download images from multiple sources
@@ -42,6 +43,8 @@ image-crawler
 ### Local Mode
 
 Scan a local directory for images. If no source is provided, you'll be prompted to select a folder:
+
+By default, Local Mode skips files already present in the output directory by comparing their content hashes.
 
 ```bash
 # Basic usage with interactive folder selection
