@@ -134,14 +134,15 @@ program
   .description('Download images from the web')
   .argument('[query]', 'Search query for images')
   .option('-o, --output <path>', 'Output directory for images')
-  .option('--max-downloads <count>', 'Maximum number of images to download', parseInt)
-  .option('--min-width <pixels>', 'Minimum image width in pixels', parseInt)
-  .option('--min-height <pixels>', 'Minimum image height in pixels', parseInt)
-  .option('--min-size <bytes>', 'Minimum file size in bytes (e.g., 100KB)', val => pathUtils.parseSize(val))
+  .option('--max-downloads <number>', 'Maximum number of images to download')
+  .option('--min-width <pixels>', 'Minimum image width in pixels')
+  .option('--min-height <pixels>', 'Minimum image height in pixels')
+  .option('--min-size <size>', 'Minimum file size (e.g., 100KB, 1MB)')
   .option('--no-safe-search', 'Disable safe search')
-  .option('--file-types <types>', 'Comma-separated list of file extensions to include', val => val.split(','))
+  .option('--file-types <types>', 'Comma-separated list of file extensions')
   .option('--headless', 'Run browser in headless mode', true)
-  .option('--timeout <ms>', 'Browser operation timeout in milliseconds', parseInt)
+  .option('--timeout <ms>', 'Browser operation timeout in milliseconds')
+  .option('--provider <name>', 'Image provider to use (pixabay, unsplash, google, or all)', 'all')
   .action(async (query, options) => {
     try {
       Logger.info('Starting web mode...');

@@ -61,14 +61,15 @@ image-crawler web "nature landscape" --max-downloads 50
 
 Options:
 - `-o, --output <path>`: Output directory for images (default: ./downloads)
-- `--max-downloads <count>`: Maximum number of images to download (default: 50)
-- `--min-width <pixels>`: Minimum image width in pixels (default: 800)
-- `--min-height <pixels>`: Minimum image height in pixels (default: 600)
-- `--min-size <bytes>`: Minimum file size (supports human-readable formats like '100KB', '1.5MB')
+- `--max-downloads <count>`: Maximum number of images to download (default: 100)
+- `--min-width <pixels>`: Minimum image width in pixels (default: 640)
+- `--min-height <pixels>`: Minimum image height in pixels (default: 480)
+- `--min-size <size>`: Minimum file size (supports human-readable formats like '100KB', '1.5MB')
 - `--no-safe-search`: Disable safe search
 - `--file-types <types>`: Comma-separated list of file extensions to include (e.g., 'jpg,png,webp')
 - `--headless`: Run browser in headless mode (default: true)
 - `--timeout <ms>`: Browser operation timeout in milliseconds (default: 30000)
+- `--provider <name>`: Image provider to use - 'pixabay', 'unsplash', 'google', or 'all' (default: 'all')
 
 ### Interactive Mode
 

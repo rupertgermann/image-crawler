@@ -86,12 +86,29 @@ class PlaywrightCrawler {
       // Log the max downloads limit
       Logger.info(`Maximum download limit set to: ${this.options.maxDownloads} images`);
       
-      // Try different sources in order of reliability
-      const sources = [
-        { name: 'Pixabay', method: this.crawlPixabay.bind(this) },
-        { name: 'Unsplash', method: this.crawlUnsplash.bind(this) },
-        { name: 'Google Images', method: this.crawlGoogleImages.bind(this) }
-      ];
+      // Define available sources
+      const availableSources = {
+        pixabay: { name: 'Pixabay', method: this.crawlPixabay.bind(this) },
+        unsplash: { name: 'Unsplash', method: this.crawlUnsplash.bind(this) },
+        google: { name: 'Google Images', method: this.crawlGoogleImages.bind(this) }
+      };
+      
+      // Determine which sources to use based on provider option
+      let sources = [];
+      const provider = (this.options.provider || 'all').toLowerCase();
+      
+      if (provider === 'all') {
+        // Use all sources in default order
+        sources = Object.values(availableSources);
+      } else if (availableSources[provider]) {
+        // Use only the specified provider
+        sources = [availableSources[provider]];
+        Logger.info(`Using specific provider: ${availableSources[provider].name}`);
+      } else {
+        // Invalid provider specified, use all with a warning
+        Logger.warn(`Invalid provider '${provider}'. Available providers: ${Object.keys(availableSources).join(', ')}, or 'all'`);
+        sources = Object.values(availableSources);
+      }
       
       // Track downloads per source for better reporting
       const sourceStats = {};

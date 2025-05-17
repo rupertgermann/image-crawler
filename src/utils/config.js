@@ -10,9 +10,9 @@ const __dirname = path.dirname(__filename);
 export const DEFAULT_CONFIG = {
   // General settings
   maxDownloads: 100,
-  minWidth: 800,
-  minHeight: 600,
-  minFileSize: '100KB',
+  minWidth: 640,
+  minHeight: 480,
+  minFileSize: '50KB',
   fileTypes: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
   
   // Platform specific settings
