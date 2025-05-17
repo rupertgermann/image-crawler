@@ -1,4 +1,5 @@
 # Image Crawler
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![GitHub](https://img.shields.io/badge/GitHub-rupertgermann/image--crawler-blue)](https://github.com/rupertgermann/image-crawler)
 
 A cross-platform tool for collecting images from local drives or the web.
 
@@ -161,6 +162,10 @@ npm test
 - **Permission issues**: Ensure the output directory is writable
 - **Headless mode issues**: Try running with `--no-headless` if you experience browser-related problems
 
+## Repository
+
+https://github.com/rupertgermann/image-crawler
+
 ## License
 
-MIT
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
