@@ -40,6 +40,30 @@ export const DEFAULT_CONFIG = {
       maxResults: 100,
       safeSearch: true
     }
+  },
+
+  // Providers configuration
+  providers: {
+    order: [
+      'google',
+      'pexels',
+      'bing',
+      'flickr',
+      'duckduckgo',
+      'freeimages',
+      'wikimedia',
+      'pixabay',
+      'unsplash'
+    ],
+    google: { enabled: true, maxResults: 100 },
+    pexels: { enabled: false, maxResults: 30 },
+    bing: { enabled: false, maxResults: 30 },
+    flickr: { enabled: false, maxResults: 30 },
+    duckduckgo: { enabled: false, maxResults: 30 },
+    freeimages: { enabled: false, maxResults: 30 },
+    wikimedia: { enabled: false, maxResults: 30 },
+    pixabay: { enabled: false, maxResults: 30 },
+    unsplash: { enabled: false, maxResults: 30 }
   }
 };
 

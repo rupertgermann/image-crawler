@@ -25,6 +25,12 @@ export default class ProviderRegistry {
       case 'google': return (await import('./google-provider.js')).default;
       case 'pixabay': return (await import('./pixabay-provider.js')).default;
       case 'unsplash': return (await import('./unsplash-provider.js')).default;
+      case 'pexels': return (await import('./pexels-provider.js')).default;
+      case 'bing': return (await import('./bing-provider.js')).default;
+      case 'flickr': return (await import('./flickr-provider.js')).default;
+      case 'duckduckgo': return (await import('./duckduckgo-provider.js')).default;
+      case 'freeimages': return (await import('./freeimages-provider.js')).default;
+      case 'wikimedia': return (await import('./wikimedia-provider.js')).default;
       // Add more providers here
       default: throw new Error(`Unknown provider: ${name}`);
     }
