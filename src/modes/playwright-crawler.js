@@ -487,19 +487,160 @@ class PlaywrightCrawler {
       const urlsToProcess = imageUrls.slice(0, maxToDownload);
       Logger.info(`Processing ${urlsToProcess.length} out of ${imageUrls.length} found images`);
       
-      // Download images
-      for (const url of urlsToProcess) {
-        // Double-check we haven't exceeded the limit (in case other sources added downloads)
-        if (this.downloadedCount >= this.totalDownloadLimit) {
-          Logger.info(`Maximum download limit of ${this.totalDownloadLimit} reached`);
+      // Download images with robust thumbnail handling for Google Images
+      // Only process visible, real thumbnails in the result grid ('.isv-r img')
+      // DEBUG: Try multiple selectors to see which matches Google Images thumbnails
+      const selectors = [
+        '.isv-r img',
+        'img.rg_i',
+        'img[jsname="Q4LuWd"]',
+        'img[data-src]',
+        'img[src^="http"]'
+      ];
+      for (const selector of selectors) {
+        const handles = await this.page.$$(selector);
+        Logger.info(`[Selector test] Found ${handles.length} images for selector: ${selector}`);
+        for (let i = 0; i < Math.min(5, handles.length); i++) {
+          const src = await handles[i].getAttribute('src');
+          Logger.info(`[Selector test] ${selector} #${i+1} src: ${src}`);
+        }
+      }
+      // Robust dynamic filtering for Google Images thumbnails
+      let allImgHandles = await this.page.$$('img[src^="http"]');
+      Logger.info(`[Dynamic filter] Found ${allImgHandles.length} img[src^="http"] candidates.`);
+      let filteredHandles = [];
+      for (const handle of allImgHandles) {
+        const src = await handle.getAttribute('src');
+        if (!src) continue;
+        // Exclude SVG, logo, profile, or gstatic images
+        if (src.endsWith('.svg') || src.includes('logo') || src.includes('profile') || src.includes('gstatic.com')) continue;
+        // Check if visible
+        let isVisible = true;
+        if (handle.isVisible) {
+          try { isVisible = await handle.isVisible(); } catch { isVisible = false; }
+        }
+        if (!isVisible) continue;
+        // Check parent class
+        const parentClass = await handle.evaluate(img => img.parentElement ? img.parentElement.className : '');
+        const grandParentClass = await handle.evaluate(img => img.parentElement && img.parentElement.parentElement ? img.parentElement.parentElement.className : '');
+        // Heuristic: must have parent or grandparent with grid/result class or data attributes
+        if (
+          parentClass.match(/isv|Q4LuWd|rg_i|data-/) ||
+          grandParentClass.match(/isv|Q4LuWd|rg_i|data-/)
+        ) {
+          filteredHandles.push({handle, src, parentClass, grandParentClass});
+        }
+      }
+      Logger.info(`[Dynamic filter] Using ${filteredHandles.length} filtered thumbnails for download loop.`);
+      for (let i = 0; i < Math.min(10, filteredHandles.length); i++) {
+        Logger.info(`[Dynamic filter] Thumbnail #${i+1}: src=${filteredHandles[i].src}, parentClass=${filteredHandles[i].parentClass}, grandParentClass=${filteredHandles[i].grandParentClass}`);
+      }
+      // Use only the handles for download loop
+      let thumbnailHandles = filteredHandles.map(f => f.handle);
+      let processedCount = 0;
+      let skippedInvisible = 0, skippedNoSrc = 0, skippedTooSmall = 0, downloaded = 0;
+      for (const thumbHandle of thumbnailHandles) {
+        if (this.downloadedCount >= this.totalDownloadLimit || processedCount >= urlsToProcess.length) {
+          Logger.info(`Maximum download limit of ${this.totalDownloadLimit} reached or processed all URLs.`);
           break;
         }
-
+        // Check if handle is visible
+        const isVisible = await thumbHandle.isVisible ? await thumbHandle.isVisible() : true;
+        if (!isVisible) {
+          Logger.info('Skipping invisible thumbnail.');
+          skippedInvisible++;
+          continue;
+        }
+        // Get the src of the thumbnail
+        const url = await thumbHandle.getAttribute('src');
+        if (!url) {
+          Logger.info('Skipping thumbnail with no src.');
+          skippedNoSrc++;
+          continue;
+        }
+        Logger.debug(`Considering thumbnail: ${url}`);
+        processedCount++;
         try {
-          await this.downloadImage(url);
-          
-          this.trackProgress("Google Images");
-          this.trackProgress("Google Images");
+          // Validate dimensions of the thumbnail
+          let { width, height } = await this.page.evaluate(async (imgUrl) => {
+            return new Promise((resolve) => {
+              const img = new window.Image();
+              img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+              img.onerror = () => resolve({ width: 0, height: 0 });
+              img.src = imgUrl;
+            });
+          }, url);
+          Logger.debug(`Thumbnail dimensions: ${width}x${height} for ${url}`);
+
+          // DEBUG: Temporarily lower min dimension criteria for debugging
+          const minWidth = 100;
+          const minHeight = 100;
+
+          let finalUrl = url;
+          let usedFullSize = false;
+
+          if (width < minWidth || height < minHeight) {
+            Logger.debug(`Thumbnail too small (${width}x${height}), trying to extract full-size image for: ${url}`);
+            // Only click if the element is visible and enabled
+            try {
+              await thumbHandle.scrollIntoViewIfNeeded();
+              await thumbHandle.click({ timeout: 3000 });
+              await this.page.waitForSelector('img.n3VNCb', { timeout: 4000 });
+              // Extract the largest image from the detail panel
+              const largeImageUrl = await this.page.evaluate(() => {
+                const imgs = Array.from(document.querySelectorAll('img.n3VNCb'));
+                let maxArea = 0;
+                let best = '';
+                for (const img of imgs) {
+                  const w = img.naturalWidth || 0;
+                  const h = img.naturalHeight || 0;
+                  const area = w * h;
+                  if (img.src && !img.src.includes('gstatic.com') && area > maxArea) {
+                    maxArea = area;
+                    best = img.src;
+                  }
+                }
+                return best;
+              });
+              if (largeImageUrl) {
+                const { width: lw, height: lh } = await this.page.evaluate(async (imgUrl) => {
+                  return new Promise((resolve) => {
+                    const img = new window.Image();
+                    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+                    img.onerror = () => resolve({ width: 0, height: 0 });
+                    img.src = imgUrl;
+                  });
+                }, largeImageUrl);
+                Logger.debug(`Full-size image dimensions: ${lw}x${lh} for ${largeImageUrl}`);
+                if (lw >= minWidth && lh >= minHeight) {
+                  Logger.info(`Using full-size image (${lw}x${lh}) from detail panel: ${largeImageUrl}`);
+                  finalUrl = largeImageUrl;
+                  usedFullSize = true;
+                } else {
+                  Logger.warn(`Full-size image is still too small (${lw}x${lh}), skipping.`);
+                }
+              } else {
+                Logger.warn('Could not extract full-size image from detail panel, skipping.');
+              }
+              await this.page.keyboard.press('Escape');
+              await this.page.waitForTimeout(500);
+            } catch (clickErr) {
+              Logger.warn(`Could not click or extract full-size image: ${clickErr.message}`);
+              continue;
+            }
+          }
+
+          // Only download if the image is large enough
+          if ((usedFullSize && finalUrl) || (width >= minWidth && height >= minHeight)) {
+            Logger.info(`Attempting to download: ${finalUrl}`);
+            await this.downloadImage(finalUrl);
+            this.trackProgress("Google Images");
+            downloaded++;
+          } else {
+            Logger.info(`Skipped image (dimensions too small or no valid URL): ${finalUrl}`);
+            skippedTooSmall++;
+            this.skippedCount++;
+          }
         } catch (error) {
           Logger.error(`Error downloading image: ${error.message}`);
           this.errorCount++;
