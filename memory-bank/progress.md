@@ -1,3 +1,45 @@
+# Progress Update - Recent Cross-Platform Compatibility Analysis
+
+## Objective:
+Analyze and ensure the image_crawler application is compatible with macOS and Windows, focusing on path handling and default configurations.
+
+## Implemented Features & Verifications:
+
+1.  **Dynamic Default Paths:**
+    *   Ensured `config.json` generation (via `src/utils/config.js`) uses dynamic, user-specific paths for default scan locations:
+        *   Windows: `process.env.USERPROFILE + '\\Pictures'` (with fallback to `C:\\Pictures`)
+        *   macOS: `$HOME/Pictures`
+        *   Linux: `$HOME/Pictures`
+    *   Fallbacks in `src/index.js` for source directory selection now consistently use `pathUtils.getDefaultScanDir()`, removing hardcoded `'C:\\\\'` for Windows.
+2.  **Code Cleanup:**
+    *   Removed the unused `normalizePath` function from `src/utils/platform.js` which had potentially problematic path separator logic.
+3.  **Path Handling Best Practices:**
+    *   Verified that path construction generally uses `path.join()` and `path.resolve()`, adhering to Node.js best practices for cross-platform path handling.
+4.  **OS-Specific Logic Review:**
+    *   Confirmed that `os.platform()` and `os.homedir()` (via `getPlatformInfo()`) are used appropriately for platform detection and user-specific directory access.
+    *   Native dialog invocation in `src/utils/file-dialog.js` uses correct platform-specific commands (`osascript` for macOS, PowerShell for Windows) with a robust CLI fallback.
+5.  **Dependency Review for Cross-Platform:**
+    *   `cross-spawn`: Used for platform-independent child processes.
+    *   `playwright`: Inherently cross-platform.
+    *   `windows-drive-letters`: Handled as an optional dependency with a fallback mechanism for Windows drive detection.
+
+## Encountered Errors & How We Fixed Them:
+
+1.  **Hardcoded Windows User Path in Default Config:**
+    *   **Issue:** The `DEFAULT_CONFIG` in `src/utils/config.js` initially used a hardcoded `defaultScanPath: 'C:\\\\Users\\\\Pictures'` for Windows.
+    *   **Fix:** Modified to use `process.env.USERPROFILE` to construct a dynamic path: `process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'Pictures') : 'C:\\\\Pictures'`.
+2.  **Hardcoded Windows Fallback Path in CLI Logic:**
+    *   **Issue:** `src/index.js` contained `'C:\\\\'` as a fallback source directory for Windows in some scenarios.
+    *   **Fix:** Replaced these instances with `pathUtils.getDefaultScanDir()` to leverage the centralized and improved default path logic.
+3.  **Unused/Potentially Problematic `normalizePath` Function:**
+    *   **Issue:** `src/utils/platform.js` included an unused `normalizePath` function that inappropriately forced path separators.
+    *   **Fix:** Removed the function to prevent potential future issues and clean up the codebase.
+
+## Overall Assessment:
+The application's architecture and use of Node.js core modules (`path`, `os`) and `fs-extra` are well-suited for cross-platform compatibility between macOS and Windows. The primary issues identified were related to hardcoded default paths specific to Windows, which have now been successfully refactored to use dynamic, user-specific locations. Further testing on distinct macOS and Windows environments is recommended to confirm these changes.
+
+---
+
 # Progress Update - 2025-05-18
 
 ## Latest Changes

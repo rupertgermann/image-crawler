@@ -1,3 +1,53 @@
+# Project Status Update - 2025-05-20
+
+## Session Focus: Cross-Platform Compatibility (macOS & Windows)
+
+This session concentrated on analyzing and enhancing the `image-crawler` application's compatibility with macOS and Windows operating systems. The primary goal was to ensure robust and user-friendly behavior, particularly concerning file paths and default configurations, while minimizing invasive code changes.
+
+## Key Accomplishments & Implemented Features:
+
+1.  **Dynamic Default Path Generation:**
+    *   **Windows:** Modified `src/utils/config.js` (within `DEFAULT_CONFIG`) to use `process.env.USERPROFILE` for constructing the `defaultScanPath` (e.g., `C:\\Users\\YourUser\\Pictures`), falling back to `C:\\Pictures` if `USERPROFILE` is not defined. This replaces the previously hardcoded `'C:\\Users\\Pictures'`.
+    *   **macOS & Linux:** Default paths (`$HOME/Pictures`) were already dynamic and remain correct.
+    *   **CLI Fallbacks:** Updated `src/index.js` to consistently use `pathUtils.getDefaultScanDir()` for determining fallback source directories, eliminating hardcoded `'C:\\\\'` paths that were present for some Windows scenarios.
+
+2.  **Code Refinement & Cleanup:**
+    *   Removed the unused `normalizePath` function from `src/utils/platform.js`. This function had logic to force path separators, which was unnecessary and potentially problematic.
+
+3.  **Verification of Best Practices:**
+    *   **Path Handling:** Confirmed that the project generally uses `path.join()` and `path.resolve()` for path manipulations, aligning with Node.js best practices for cross-platform stability.
+    *   **OS-Specific Information:** Verified the correct use of `os.platform()` for platform detection and `os.homedir()` (via `getPlatformInfo()`) for accessing user-specific directories.
+    *   **Native File Dialogs:** The existing logic in `src/utils/file-dialog.js` for native folder selection (`osascript` for macOS, PowerShell for Windows) was reviewed and deemed appropriate, with a solid CLI-based fallback.
+
+4.  **Dependency Review:**
+    *   Core dependencies like `cross-spawn` (for platform-agnostic child process spawning) and `playwright` (inherently cross-platform) support the compatibility goals.
+    *   The optional dependency `windows-drive-letters` is handled with a fallback, ensuring the application doesn't break if it's unavailable on Windows.
+
+## Addressed Issues & Resolutions:
+
+*   **Hardcoded Default Windows Paths:** The primary issue was the reliance on hardcoded paths for default user directories on Windows. This was resolved by implementing dynamic path generation using environment variables and consistent utility functions.
+*   **Unnecessary Path Normalization Code:** An unused function with potentially problematic path normalization logic was removed, simplifying the codebase.
+
+## Current Project Status:
+
+*   The application's codebase is now more robust for cross-platform use, especially between macOS and Windows.
+*   Default configurations are more intelligent and user-centric.
+*   The core logic for path handling and OS interaction aligns well with established best practices.
+
+## Next Steps & Recommendations:
+
+1.  **Thorough Cross-Platform Testing:**
+    *   Crucially, the application needs to be tested comprehensively on clean macOS and Windows environments.
+    *   Testing should cover:
+        *   Initial setup and configuration file (`config.json`) generation.
+        *   Local mode: Interactive folder selection (both native and CLI fallbacks), scanning default 'Pictures' directories, scanning custom paths (including those with spaces/special characters), and output to default/custom locations.
+        *   Web mode: Basic functionality to ensure no regressions.
+2.  **Documentation:** While `progress.md` has been updated, ensure the main `README.md` or other relevant documentation reflects any user-facing changes or considerations stemming from this work, if applicable (though changes were mostly internal).
+
+This session significantly improved the underlying cross-platform reliability of the application. Future work should prioritize empirical testing to validate these improvements.
+
+---
+
 # Image Crawler Project Status - 2025-05-17
 
 ## Implementation Overview

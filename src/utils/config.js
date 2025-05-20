@@ -20,7 +20,7 @@ export const DEFAULT_CONFIG = {
     windows: {
       selectedDrives: ['C:\\'],
       scanNetworkDrives: false,
-      defaultScanPath: 'C:\\Users\\Pictures',
+      defaultScanPath: process.env.USERPROFILE ? path.join(process.env.USERPROFILE, 'Pictures') : 'C:\\Pictures',
       defaultOutputDir: path.join(process.cwd(), 'downloads')
     },
     darwin: {

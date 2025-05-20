@@ -72,7 +72,7 @@ program
       } catch (error) {
         Logger.warn('Source folder selection canceled or failed, using default source folder');
         Logger.debug(`Error during folder selection: ${error.message}`);
-        options.source = platform.isWindows ? 'C:\\' : pathUtils.getDefaultScanDir();
+        options.source = pathUtils.getDefaultScanDir();
         Logger.debug(`Using fallback source directory: ${options.source}`);
       }
 
@@ -259,7 +259,7 @@ async function runInteractiveMode() {
         Logger.info(`Selected source folder: ${options.source}`);
       } catch (error) {
         Logger.warn('Using default source folder');
-        options.source = platform.isWindows ? 'C:\\' : pathUtils.getDefaultScanDir();
+        options.source = pathUtils.getDefaultScanDir();
       }
 
       // Output directory selection
@@ -343,7 +343,7 @@ async function handleDriveSelection() {
     const drives = await getWindowsDrives();
     
     if (drives.length === 0) {
-      Logger.warn('No drives found. Using C:\\ as default.');
+      Logger.warn('No drives found. Using default source folder.');
       return;
     }
 

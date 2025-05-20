@@ -68,20 +68,6 @@ export const getWindowsDrives = async () => {
 };
 
 /**
- * Normalizes a path for the current platform
- * @param {string} filePath - The path to normalize
- * @returns {string} Normalized path
- */
-export const normalizePath = (filePath) => {
-  if (!filePath) return '';
-  // Replace forward slashes with backslashes on Windows
-  if (process.platform === 'win32') {
-    return filePath.replace(/\//g, '\\');
-  }
-  return filePath.replace(/\\/g, '/');
-};
-
-/**
  * Checks if a path is a directory
  * @param {string} path - Path to check
  * @returns {Promise<boolean>} True if the path is a directory
@@ -98,6 +84,5 @@ export const isDirectory = async (path) => {
 export default {
   getPlatformInfo,
   getWindowsDrives,
-  normalizePath,
   isDirectory
 };
