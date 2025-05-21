@@ -61,14 +61,17 @@ Scan a local directory for images. If no source is provided, you'll be prompted 
 By default, Local Mode skips files already present in the output directory by comparing their content hashes.
 
 ```bash
+
+npx image-crawler web "hamster" --provider all
+
 # Basic usage with interactive folder selection
-image-crawler local --output ./downloads
+npx image-crawler local --output ./downloads
 
 # Specify source directory
-image-crawler local --source ~/Pictures --output ./downloads
+npx image-crawler local --source ~/Pictures --output ./downloads
 
 # With filters and max files
-image-crawler local --min-width 800 --min-height 600 --max-files 100
+npx image-crawler local --min-width 800 --min-height 600 --max-files 100
 ```
 
 #### Options:
@@ -89,16 +92,16 @@ Download images from the web. A search query is required:
 
 ```bash
 # Basic usage (tries all enabled sources by default)
-image-crawler web "nature landscape" --max-downloads 50
+npx image-crawler web "nature landscape" --max-downloads 50
 
 # Specify a single provider
-image-crawler web "mountain lake" --provider unsplash
+npx image-crawler web "mountain lake" --provider unsplash
 
 # Specify multiple providers (comma-separated)
-image-crawler web "city lights" --provider bing,pexels --max-downloads 20
+npx image-crawler web "city lights" --provider bing,pexels --max-downloads 20
 
 # With size and type filters
-image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types jpg,png
+npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types jpg,png
 ```
 
 #### Options:
@@ -118,7 +121,7 @@ image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types jpg,p
 Start in interactive mode for a guided experience:
 
 ```bash
-image-crawler interactive
+npx image-crawler interactive
 ```
 
 ## Configuration
@@ -137,7 +140,7 @@ Example usage:
 
 ```bash
 # Enable native dialogs and debug logging
-USE_NATIVE_DIALOG=true DEBUG=image-crawler:* image-crawler local
+USE_NATIVE_DIALOG=true DEBUG=image-crawler:* npx image-crawler local
 ```
 
 ## Development
