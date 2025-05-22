@@ -1,6 +1,10 @@
-const fs = require('fs-extra');
-const path = require('path');
-const { getPlatformInfo } = require('./platform.js');
+import fs from 'fs-extra';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { getPlatformInfo } from './platform.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Default configuration
 const DEFAULT_CONFIG = {
@@ -306,7 +310,9 @@ class ConfigManager {
   }
 }
 
-// Export a singleton instance
-module.exports = new ConfigManager();
-// Also export DEFAULT_CONFIG if it's meant to be accessed directly from outside
-module.exports.DEFAULT_CONFIG = DEFAULT_CONFIG;
+// Create and export a singleton instance
+const configManager = new ConfigManager();
+
+// Export the singleton instance and DEFAULT_CONFIG
+export default configManager;
+export { DEFAULT_CONFIG };

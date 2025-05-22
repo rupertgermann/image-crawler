@@ -1,6 +1,6 @@
-const BaseProvider = require('./base-provider.js'); // Assuming base-provider.js will be CJS
+import BaseProvider from './base-provider.js';
 // Logger will be replaced by event emitter in PlaywrightCrawler
-// const Logger = require('../utils/logger.js'); 
+// import Logger from '../utils/logger.js'; 
 
 const GOOGLE_IMAGES_URL = 'https://www.google.com/imghp';
 
@@ -134,4 +134,4 @@ class GoogleProvider extends BaseProvider {
   }
 }
 
-module.exports = GoogleProvider;
+export default GoogleProvider;

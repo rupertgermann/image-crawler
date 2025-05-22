@@ -1,14 +1,13 @@
-const fs = require('fs-extra');
-const path = require('path');
-const sharp = require('sharp');
-const EventEmitter = require('events');
+import fs from 'fs-extra';
+import path from 'path';
+import sharp from 'sharp';
+import EventEmitter from 'events';
 // Logger is not directly used anymore, events are emitted instead.
-// const Logger = require('../utils/logger.js'); 
-const validators = require('../utils/validators.js');
-const pathUtils = require('../utils/paths.js');
-const configManager = require('../utils/config.js'); // Is CJS
-const { computeFileHash } = require('../utils/hash-utils.js'); // Is CJS
-const { DEFAULT_CONFIG } = require('../utils/config.js'); // Get DEFAULT_CONFIG
+// import Logger from '../utils/logger.js';
+import * as validators from '../utils/validators.js';
+import * as pathUtils from '../utils/paths.js';
+import configManager, { DEFAULT_CONFIG } from '../utils/config.js';
+import { computeFileHash } from '../utils/hash-utils.js';
 
 class LocalCrawler extends EventEmitter {
   constructor(options = {}) {
@@ -281,4 +280,4 @@ class LocalCrawler extends EventEmitter {
   }
 }
 
-module.exports = LocalCrawler;
+export default LocalCrawler;

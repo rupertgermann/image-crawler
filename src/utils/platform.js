@@ -1,7 +1,7 @@
-const { execSync } = require('child_process');
-const os = require('os');
-const fs = require('fs-extra');
-const path = require('path');
+import { execSync } from 'child_process';
+import os from 'os';
+import fs from 'fs-extra';
+import path from 'path';
 
 /**
  * Detects the current platform and returns platform-specific information
@@ -77,7 +77,7 @@ const isDirectory = async (path) => {
   }
 };
 
-module.exports = {
+export {
   getPlatformInfo,
   getWindowsDrives,
   isDirectory

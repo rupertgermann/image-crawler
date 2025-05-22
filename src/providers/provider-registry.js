@@ -1,5 +1,5 @@
 // ProviderRegistry: manages enabled providers and their order
-const configManager = require('../utils/config.js'); // Is CJS
+import configManager from '../utils/config.js';
 
 class ProviderRegistry {
   constructor() { // No need to pass config here, will get from configManager
@@ -27,25 +27,27 @@ class ProviderRegistry {
     }
   }
 
-  async loadProviderClass(name) { // Keep async if provider constructors are async or have async init
-    // For CommonJS, require is synchronous. If providers become complex, this might need adjustment.
-    // Assuming provider files will export their class as module.exports.
-    switch (name) {
-      case 'google': return require('./google-provider.js');
-      case 'pixabay': return require('./pixabay-provider.js');
-      case 'unsplash': return require('./unsplash-provider.js');
-      case 'pexels': return require('./pexels-provider.js');
-      case 'bing': return require('./bing-provider.js');
-      case 'flickr': return require('./flickr-provider.js');
-      case 'duckduckgo': return require('./duckduckgo-provider.js');
-      case 'freeimages': return require('./freeimages-provider.js');
-      case 'wikimedia': return require('./wikimedia-provider.js');
-      // Add more providers here
-      default: throw new Error(`Unknown provider: ${name}`);
+  async loadProviderClass(name) {
+    // Use dynamic imports for ES modules
+    try {
+      let module;
+      switch (name) {
+        case 'google': module = await import('./google-provider.js'); break;
+        case 'pixabay': module = await import('./pixabay-provider.js'); break;
+        case 'unsplash': module = await import('./unsplash-provider.js'); break;
+        case 'pexels': module = await import('./pexels-provider.js'); break;
+        case 'bing': module = await import('./bing-provider.js'); break;
+        case 'flickr': module = await import('./flickr-provider.js'); break;
+        case 'duckduckgo': module = await import('./duckduckgo-provider.js'); break;
+        case 'freeimages': module = await import('./freeimages-provider.js'); break;
+        case 'wikimedia': module = await import('./wikimedia-provider.js'); break;
+        default: throw new Error(`Unknown provider: ${name}`);
+      }
+      return module.default; // Return the default export from the module
+    } catch (error) {
+      console.error(`Error loading provider ${name}:`, error);
+      throw error; // Re-throw to be handled by the caller
     }
-    // Note: The original (await import(...)).default structure implies providers might be exporting
-    // `export default class ...`. If so, after converting providers to CJS, they should use
-    // `module.exports = class ...`, so direct require() will work.
   }
 
   getActiveProviders() {
@@ -57,4 +59,4 @@ class ProviderRegistry {
   }
 }
 
-module.exports = ProviderRegistry;
+export default ProviderRegistry;

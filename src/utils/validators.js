@@ -1,6 +1,6 @@
-const path = require('path');
-const fs = require('fs-extra');
-const Logger = require('./logger.js'); // Assuming logger.js is CJS
+import path from 'path';
+import fs from 'fs-extra';
+import Logger from './logger.js';
 
 /**
  * Validates if a path exists
@@ -160,7 +160,7 @@ const validateFilePath = async (filePath, allowedExtensions) => {
   }
 };
 
-module.exports = {
+export {
   validatePathExists,
   validateDirectory,
   validateWritable,

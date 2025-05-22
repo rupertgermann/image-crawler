@@ -1,14 +1,13 @@
-const { chromium } = require('playwright');
-const fs = require('fs-extra');
-const path = require('path');
-const EventEmitter = require('events');
-// const sharp = require('sharp'); // Not explicitly used for conversion, only metadata if dimensions are checked by crawler not provider
-const { computeFileHash, computeBufferHash } = require('../utils/hash-utils.js');
-const validators = require('../utils/validators.js');
-const pathUtils = require('../utils/paths.js');
-const configManager = require('../utils/config.js');
-const ProviderRegistry = require('../providers/provider-registry.js');
-const { DEFAULT_CONFIG } = require('../utils/config.js');
+import { chromium } from 'playwright';
+import fs from 'fs-extra';
+import path from 'path';
+import EventEmitter from 'events';
+// import sharp from 'sharp'; // Not explicitly used for conversion, only metadata if dimensions are checked by crawler not provider
+import { computeFileHash, computeBufferHash } from '../utils/hash-utils.js';
+import * as validators from '../utils/validators.js';
+import * as pathUtils from '../utils/paths.js';
+import configManager, { DEFAULT_CONFIG } from '../utils/config.js';
+import ProviderRegistry from '../providers/provider-registry.js';
 
 class PlaywrightCrawler extends EventEmitter {
   constructor(options = {}) {
@@ -264,4 +263,4 @@ class PlaywrightCrawler extends EventEmitter {
   // Deprecated specific crawl methods removed.
 }
 
-module.exports = PlaywrightCrawler;
+export default PlaywrightCrawler;

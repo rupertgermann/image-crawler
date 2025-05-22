@@ -1,8 +1,8 @@
-const path = require('path');
-const fs = require('fs-extra');
-const { getPlatformInfo } = require('./platform.js'); // platform.js is CJS
-const Logger = require('./logger.js'); // logger.js is CJS
-const configManager = require('./config.js'); // config.js is CJS
+import path from 'path';
+import fs from 'fs-extra';
+import { getPlatformInfo } from './platform.js';
+import Logger from './logger.js';
+import configManager from './config.js';
 
 const platform = getPlatformInfo();
 
@@ -224,7 +224,7 @@ const parseSize = (sizeStr) => {
   return Math.floor(size * units[unit]);
 };
 
-module.exports = {
+export {
   resolvePath,
   ensureDir,
   pathExists,
@@ -233,5 +233,5 @@ module.exports = {
   isInProjectDir,
   getFilesRecursively,
   sanitizeFilename,
-  parseSize,
+  parseSize
 };

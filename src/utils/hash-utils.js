@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const fs = require('fs-extra');
+import crypto from 'crypto';
+import fs from 'fs-extra';
 
 /**
  * Compute MD5 hash of a Buffer
@@ -20,7 +20,7 @@ async function computeFileHash(filePath) {
   return computeBufferHash(buffer);
 }
 
-module.exports = {
+export {
   computeBufferHash,
   computeFileHash
 };

@@ -1,6 +1,7 @@
 {
   "name": "image-crawler",
   "version": "1.0.0",
+  "type": "module",
   "description": "Cross-platform image collection tool with local and web crawling capabilities",
   "main": "electron/main.js",
   "scripts": {
