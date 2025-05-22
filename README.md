@@ -223,6 +223,56 @@ npx image-crawler web "mountain lake" --provider unsplash
 # Specify multiple providers (comma-separated)
 npx image-crawler web "city lights" --provider bing,pexels --max-downloads 20
 
+### Windows-Specific Examples
+
+```cmd
+:: Basic usage with Windows path
+npx image-crawler local --source "C:\Users\Public\Pictures" --output "D:\Downloads\Images"
+
+:: Using environment variables for paths
+set SOURCE_DIR=%USERPROFILE%\Pictures\Screenshots
+set OUTPUT_DIR=%USERPROFILE%\Downloads\Processed
+npx image-crawler local --source "%SOURCE_DIR%" --output "%OUTPUT_DIR%"
+
+:: Using Windows network paths (UNC paths)
+npx image-crawler local --source "\\server\shared\photos" --output "D:\Backup\Photos"
+
+:: Using Windows drive letters with specific file types
+npx image-crawler local --source "D:" --file-types "jpg,png" --min-size 1MB
+
+:: Running as a scheduled task (save as .bat file)
+@echo off
+setlocal
+cd /d "%~dp0"
+npx image-crawler web "windows 11 wallpaper" --output "%USERPROFILE%\Pictures\Wallpapers" --max-downloads 10
+endlocal
+
+:: Using PowerShell variables
+$query = "4k wallpaper"
+$output = "$env:USERPROFILE\Pictures\Wallpapers\$(Get-Date -Format 'yyyy-MM')"
+npx image-crawler web $query --output $output --max-downloads 20
+```
+
+### Windows Troubleshooting Commands
+
+```cmd
+:: Check if Playwright browsers are installed correctly
+npx playwright install --dry-run
+
+:: Clear Playwright cache if you encounter issues
+npx playwright install --force
+
+:: Run with debug logging (PowerShell)
+$env:DEBUG="image-crawler:*"
+npx image-crawler web "test" --output "$env:TEMP\test-download"
+
+:: Check system requirements
+npx playwright check
+
+:: Install missing Windows dependencies (run as Administrator)
+npx playwright install-deps
+```
+
 # With size and type filters
 npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types jpg,png
 ```
