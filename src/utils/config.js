@@ -215,15 +215,11 @@ class ConfigManager {
     if (!this.platform.isWindows) return [];
     
     try {
-      // Assuming platform.js is or will be CJS compatible
-      const { getWindowsDrives } = require('./platform.js'); 
-      return await getWindowsDrives(); // If getWindowsDrives is async
+      // Use dynamic import for ES modules compatibility
+      const { getWindowsDrives } = await import('./platform.js');
+      return await getWindowsDrives();
     } catch (error) {
       console.error('Error detecting Windows drives:', error);
-      // If getWindowsDrives was originally async due to dynamic import,
-      // and now it's a sync require, the await might not be needed
-      // or the function itself might need adjustment.
-      // For now, keeping await assuming getWindowsDrives itself is async.
       return ['C:\\'];
     }
   }

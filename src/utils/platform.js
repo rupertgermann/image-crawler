@@ -45,13 +45,14 @@ const getWindowsDrives = async () => {
   try {
     // Try using the windows-drive-letters package if available
     try {
-      const { getDriveLetters } = require('windows-drive-letters'); // Changed to require
-      return await getDriveLetters(); // Assuming getDriveLetters is async
+      // Use dynamic import for ES modules compatibility
+      const { getDriveLetters } = await import('windows-drive-letters');
+      return await getDriveLetters();
     } catch (e) {
       // Fallback to native implementation if package is not available
       if (process.platform !== 'win32') return [];
       
-      const stdout = execSync('wmic logicaldisk get name').toString(); // Keep execSync for now
+      const stdout = execSync('wmic logicaldisk get name').toString();
       return stdout
         .split('\n')
         .map(line => line.trim())
