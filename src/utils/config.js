@@ -1,13 +1,13 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { getPlatformInfo } from './platform.js';
 import { fileURLToPath } from 'url';
+import { getPlatformInfo } from './platform.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Default configuration
-export const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG = {
   // General settings
   maxDownloads: 100,
   minWidth: 640,
@@ -55,36 +55,39 @@ export const DEFAULT_CONFIG = {
       'pixabay',
       'unsplash'
     ],
-    google: { enabled: true, maxResults: 100 },
-    pexels: { enabled: false, maxResults: 30 },
-    bing: { 
-      enabled: false, 
+    google: { enabled: false, maxResults: 100 },
+    pexels: { enabled: true, maxResults: 30 },
+    bing: {
+      enabled: true,
       maxResults: 30,
       maxScrollsBing: 15,
       scrollDelayBing: 2000,
-      lightboxDelayBing: 1500 
+      lightboxDelayBing: 1500
     },
     flickr: { enabled: false, maxResults: 30 },
-    duckduckgo: { 
-      enabled: false, 
+    duckduckgo: {
+      enabled: true,
       maxResults: 30,
       maxScrollsDDG: 15,
       loadMoreTimeoutDDG: 10000,
       scrollDelayDDG: 2000
     },
-    freeimages: { 
-      enabled: false, 
+    freeimages: {
+      enabled: true,
       maxResults: 30,
       maxScrollsFreeImages: 10,
       scrollDelayFreeImages: 2500
     },
-    wikimedia: { enabled: false, maxResults: 30 },
-    pixabay: { enabled: false, maxResults: 30 },
-    unsplash: { enabled: false, maxResults: 30 }
+    wikimedia: { enabled: true, maxResults: 30 },
+    pixabay: { enabled: true, maxResults: 30 },
+    unsplash: { enabled: true, maxResults: 30 }
   }
 };
 
 class ConfigManager {
+  // Make DEFAULT_CONFIG accessible if needed, e.g., via a getter or by attaching to instance/prototype
+  static DEFAULT_CONFIG = DEFAULT_CONFIG; // Or this.DEFAULT_CONFIG = DEFAULT_CONFIG in constructor
+
   constructor() {
     this.config = null;
     this.configPath = path.join(process.cwd(), 'config.json');
@@ -212,6 +215,7 @@ class ConfigManager {
     if (!this.platform.isWindows) return [];
     
     try {
+      // Use dynamic import for ES modules compatibility
       const { getWindowsDrives } = await import('./platform.js');
       return await getWindowsDrives();
     } catch (error) {
@@ -302,5 +306,9 @@ class ConfigManager {
   }
 }
 
-// Export a singleton instance
-export default new ConfigManager();
+// Create and export a singleton instance
+const configManager = new ConfigManager();
+
+// Export the singleton instance and DEFAULT_CONFIG
+export default configManager;
+export { DEFAULT_CONFIG };

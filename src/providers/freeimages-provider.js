@@ -1,18 +1,19 @@
 import BaseProvider from './base-provider.js';
-import fs from 'fs-extra';
-import path from 'path';
-import Logger from '../utils/logger.js';
+// fs and path are not used directly.
+// import fs from 'fs-extra';
+// import path from 'path';
+// import Logger from '../utils/logger.js'; // Use this.emitLog
 
 // FreeImages provider using Playwright (simple grid scraping)
 export default class FreeImagesProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
-    this.baseUrl = 'https://www.freeimages.com'; // Base URL, path added in methods
-    this.name = 'FreeImages'; // For logging
+  constructor(config, emitter) { // Added emitter
+    super(config, emitter); // Pass emitter to BaseProvider
+    this.baseUrl = 'https://www.freeimages.com';
+    this.name = 'FreeImages';
   }
 
   async initialize() {
-    Logger.info('FreeImagesProvider initialized.');
+    this.emitLog('info', 'FreeImagesProvider initialized.');
   }
 
   /**
@@ -28,59 +29,58 @@ export default class FreeImagesProvider extends BaseProvider {
     const searchUrl = `${this.baseUrl}${searchPath}`;
     const detailPageUrls = new Set();
 
-    Logger.info(`[${this.name}] Searching for "${query}" at ${searchUrl}`);
+    this.emitLog('info', `Searching for "${query}" at ${searchUrl}`);
 
     try {
       await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: this.config.timeout || 60000 });
 
-      // Handle cookie consent (selector specific to FreeImages)
       try {
         const cookieButtonSelector = 'button#onetrust-accept-btn-handler';
         const cookieButton = page.locator(cookieButtonSelector);
         if (await cookieButton.isVisible({ timeout: 5000 })) {
           await cookieButton.click({ timeout: 3000 });
-          Logger.info(`[${this.name}] Clicked cookie consent button.`);
+          this.emitLog('info', `Clicked cookie consent button.`);
           await page.waitForLoadState('networkidle', { timeout: 5000 });
         }
       } catch (e) {
-        Logger.debug(`[${this.name}] No cookie consent dialog found or error clicking: ${e.message}`);
+        this.emitLog('debug', `No cookie consent dialog found or error clicking: ${e.message}`);
       }
 
       let scrollCount = 0;
       const maxScrolls = this.config.maxScrollsFreeImages || 10;
-      // Selector for links to individual image detail pages
-      const imageLinkSelector = 'div.MosaicAsset-module__container___L9x3s > a'; 
+      const imageLinkSelector = 'div.MosaicAsset-module__container___L9x3s > a';
 
       while (detailPageUrls.size < maxResults && scrollCount < maxScrolls) {
         const initialCount = detailPageUrls.size;
-        const links = await page.locator(imageLinkSelector).evaluateAll(anchors => 
-          anchors.map(a => a.href).filter(href => href && href.startsWith(this.baseUrl))
+        const links = await page.locator(imageLinkSelector).evaluateAll(anchors =>
+          anchors.map(a => a.href).filter(href => href && href.startsWith(this.baseUrl)) // this.baseUrl might not be available in evaluateAll scope, pass it or make it static
         );
-        
+
         links.forEach(href => {
           if (detailPageUrls.size < maxResults) {
             detailPageUrls.add(href);
           }
         });
 
-        Logger.info(`[${this.name}] Scroll ${scrollCount + 1}/${maxScrolls}. Found ${detailPageUrls.size} unique detail page URLs (target: ${maxResults}).`);
+        this.emitLog('info', `Scroll ${scrollCount + 1}/${maxScrolls}. Found ${detailPageUrls.size} unique detail page URLs (target: ${maxResults}).`);
+        this.emitProgress({ foundCount: detailPageUrls.size, requestedCount: maxResults, message: `Scrolled ${scrollCount + 1} times.` });
+        
         if (detailPageUrls.size >= maxResults) break;
 
         await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
         await page.waitForTimeout(this.config.scrollDelayFreeImages || 2500);
         scrollCount++;
 
-        if (detailPageUrls.size === initialCount && scrollCount > 2) { // Stop if no new URLs after a few scrolls
-            Logger.info(`[${this.name}] No new image detail page URLs found after ${scrollCount} scrolls. Stopping.`);
-            break;
+        if (detailPageUrls.size === initialCount && scrollCount > 2) {
+          this.emitLog('info', `No new image detail page URLs found after ${scrollCount} scrolls. Stopping.`);
+          break;
         }
       }
     } catch (error) {
-      Logger.error(`[${this.name}] Error fetching image detail page URLs for "${query}": ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error fetching image detail page URLs for "${query}": ${error.message}`);
     }
 
-    Logger.info(`[${this.name}] Found a total of ${detailPageUrls.size} unique image detail page URLs for "${query}".`);
+    this.emitLog('info', `Found a total of ${detailPageUrls.size} unique image detail page URLs for "${query}".`);
     return Array.from(detailPageUrls).slice(0, maxResults);
   }
 
@@ -91,29 +91,29 @@ export default class FreeImagesProvider extends BaseProvider {
    * @returns {Promise<string|null>} - The full-size image URL, or null if not found.
    */
   async getFullSizeImage(page, detailPageUrl) {
-    Logger.info(`[${this.name}] Navigating to detail page: ${detailPageUrl}`);
+    this.emitLog('info', `Navigating to detail page: ${detailPageUrl}`);
     try {
       await page.goto(detailPageUrl, { waitUntil: 'networkidle', timeout: this.config.timeout || 60000 });
-      
-      // Selector for the main image on the detail page
-      const mainImageSelector = 'img[data-testid="photo-details-image"]'; 
+
+      const mainImageSelector = 'img[data-testid="photo-details-image"]';
       const imageElement = page.locator(mainImageSelector);
 
       if (await imageElement.isVisible({ timeout: 10000 })) {
         const fullSizeUrl = await imageElement.getAttribute('src');
         if (fullSizeUrl && fullSizeUrl.startsWith('http')) {
-          Logger.info(`[${this.name}] Extracted full-size image URL: ${fullSizeUrl}`);
+          this.emitLog('info', `Extracted full-size image URL: ${fullSizeUrl}`);
           return fullSizeUrl;
         }
-        Logger.warn(`[${this.name}] Main image 'src' attribute not found or invalid on ${detailPageUrl}`);
+        this.emitLog('warn', `Main image 'src' attribute not found or invalid on ${detailPageUrl}`);
       } else {
-        Logger.warn(`[${this.name}] Main image not visible on detail page ${detailPageUrl}`);
+        this.emitLog('warn', `Main image not visible on detail page ${detailPageUrl}`);
       }
       return null;
     } catch (error) {
-      Logger.error(`[${this.name}] Error getting full-size image from ${detailPageUrl}: ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error getting full-size image from ${detailPageUrl}: ${error.message}`);
       return null;
     }
   }
 }
+
+

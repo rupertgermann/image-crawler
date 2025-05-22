@@ -6,7 +6,7 @@ import fs from 'fs-extra';
  * @param {Buffer} buffer
  * @returns {Promise<string>} Hex digest
  */
-export async function computeBufferHash(buffer) {
+async function computeBufferHash(buffer) {
   return crypto.createHash('md5').update(buffer).digest('hex');
 }
 
@@ -15,7 +15,12 @@ export async function computeBufferHash(buffer) {
  * @param {string} filePath
  * @returns {Promise<string>} Hex digest
  */
-export async function computeFileHash(filePath) {
+async function computeFileHash(filePath) {
   const buffer = await fs.readFile(filePath);
   return computeBufferHash(buffer);
 }
+
+export {
+  computeBufferHash,
+  computeFileHash
+};

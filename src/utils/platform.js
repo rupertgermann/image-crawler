@@ -1,17 +1,13 @@
 import { execSync } from 'child_process';
 import os from 'os';
 import fs from 'fs-extra';
-import { fileURLToPath } from 'url';
 import path from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * Detects the current platform and returns platform-specific information
  * @returns {Object} Platform information
  */
-export const getPlatformInfo = () => {
+const getPlatformInfo = () => {
   const platform = process.platform;
   const isWindows = platform === 'win32';
   const isMac = platform === 'darwin';
@@ -45,10 +41,11 @@ const getDefaultDownloadPath = (platform, homedir) => {
  * Detects available drives on Windows
  * @returns {Promise<string[]>} Array of available drive letters
  */
-export const getWindowsDrives = async () => {
+const getWindowsDrives = async () => {
   try {
     // Try using the windows-drive-letters package if available
     try {
+      // Use dynamic import for ES modules compatibility
       const { getDriveLetters } = await import('windows-drive-letters');
       return await getDriveLetters();
     } catch (e) {
@@ -72,7 +69,7 @@ export const getWindowsDrives = async () => {
  * @param {string} path - Path to check
  * @returns {Promise<boolean>} True if the path is a directory
  */
-export const isDirectory = async (path) => {
+const isDirectory = async (path) => {
   try {
     const stat = await fs.stat(path);
     return stat.isDirectory();
@@ -81,7 +78,7 @@ export const isDirectory = async (path) => {
   }
 };
 
-export default {
+export {
   getPlatformInfo,
   getWindowsDrives,
   isDirectory

@@ -7,7 +7,7 @@ import Logger from './logger.js';
  * @param {string} path - Path to validate
  * @returns {Promise<{valid: boolean, message?: string}>} Validation result
  */
-export const validatePathExists = async (path) => {
+const validatePathExists = async (path) => {
   try {
     await fs.access(path);
     return { valid: true };
@@ -24,7 +24,7 @@ export const validatePathExists = async (path) => {
  * @param {string} dirPath - Directory path to validate
  * @returns {Promise<{valid: boolean, message?: string}>} Validation result
  */
-export const validateDirectory = async (dirPath) => {
+const validateDirectory = async (dirPath) => {
   try {
     const stats = await fs.stat(dirPath);
     if (!stats.isDirectory()) {
@@ -47,7 +47,7 @@ export const validateDirectory = async (dirPath) => {
  * @param {string} dirPath - Directory path to validate
  * @returns {Promise<{valid: boolean, message?: string}>} Validation result
  */
-export const validateWritable = async (dirPath) => {
+const validateWritable = async (dirPath) => {
   try {
     const testFile = path.join(dirPath, `.test-${Date.now()}`);
     await fs.writeFile(testFile, 'test');
@@ -66,7 +66,7 @@ export const validateWritable = async (dirPath) => {
  * @param {string} url - URL to validate
  * @returns {{valid: boolean, message?: string}} Validation result
  */
-export const validateUrl = (url) => {
+const validateUrl = (url) => {
   try {
     // eslint-disable-next-line no-new
     new URL(url);
@@ -85,7 +85,7 @@ export const validateUrl = (url) => {
  * @param {string} fieldName - Name of the field for error message
  * @returns {{valid: boolean, message?: string}} Validation result
  */
-export const validatePositiveInteger = (value, fieldName = 'Value') => {
+const validatePositiveInteger = (value, fieldName = 'Value') => {
   const num = Number(value);
   if (isNaN(num) || !Number.isInteger(num) || num <= 0) {
     return { 
@@ -101,7 +101,7 @@ export const validatePositiveInteger = (value, fieldName = 'Value') => {
  * @param {string[]} extensions - File extensions to validate (without dot)
  * @returns {{valid: boolean, message?: string}} Validation result
  */
-export const validateFileExtensions = (extensions) => {
+const validateFileExtensions = (extensions) => {
   if (!Array.isArray(extensions) || extensions.length === 0) {
     return { 
       valid: false, 
@@ -130,7 +130,7 @@ export const validateFileExtensions = (extensions) => {
  * @param {string[]} [allowedExtensions] - Allowed file extensions (without dot)
  * @returns {Promise<{valid: boolean, message?: string}>} Validation result
  */
-export const validateFilePath = async (filePath, allowedExtensions) => {
+const validateFilePath = async (filePath, allowedExtensions) => {
   try {
     const stats = await fs.stat(filePath);
     
@@ -160,7 +160,7 @@ export const validateFilePath = async (filePath, allowedExtensions) => {
   }
 };
 
-export default {
+export {
   validatePathExists,
   validateDirectory,
   validateWritable,

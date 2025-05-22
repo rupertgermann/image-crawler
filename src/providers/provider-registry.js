@@ -1,7 +1,7 @@
 // ProviderRegistry: manages enabled providers and their order
 import configManager from '../utils/config.js';
 
-export default class ProviderRegistry {
+class ProviderRegistry {
   constructor() { // No need to pass config here, will get from configManager
     this.providers = {};
     this.activeProviders = [];
@@ -28,18 +28,25 @@ export default class ProviderRegistry {
   }
 
   async loadProviderClass(name) {
-    switch (name) {
-      case 'google': return (await import('./google-provider.js')).default;
-      case 'pixabay': return (await import('./pixabay-provider.js')).default;
-      case 'unsplash': return (await import('./unsplash-provider.js')).default;
-      case 'pexels': return (await import('./pexels-provider.js')).default;
-      case 'bing': return (await import('./bing-provider.js')).default;
-      case 'flickr': return (await import('./flickr-provider.js')).default;
-      case 'duckduckgo': return (await import('./duckduckgo-provider.js')).default;
-      case 'freeimages': return (await import('./freeimages-provider.js')).default;
-      case 'wikimedia': return (await import('./wikimedia-provider.js')).default;
-      // Add more providers here
-      default: throw new Error(`Unknown provider: ${name}`);
+    // Use dynamic imports for ES modules
+    try {
+      let module;
+      switch (name) {
+        case 'google': module = await import('./google-provider.js'); break;
+        case 'pixabay': module = await import('./pixabay-provider.js'); break;
+        case 'unsplash': module = await import('./unsplash-provider.js'); break;
+        case 'pexels': module = await import('./pexels-provider.js'); break;
+        case 'bing': module = await import('./bing-provider.js'); break;
+        case 'flickr': module = await import('./flickr-provider.js'); break;
+        case 'duckduckgo': module = await import('./duckduckgo-provider.js'); break;
+        case 'freeimages': module = await import('./freeimages-provider.js'); break;
+        case 'wikimedia': module = await import('./wikimedia-provider.js'); break;
+        default: throw new Error(`Unknown provider: ${name}`);
+      }
+      return module.default; // Return the default export from the module
+    } catch (error) {
+      console.error(`Error loading provider ${name}:`, error);
+      throw error; // Re-throw to be handled by the caller
     }
   }
 
@@ -51,3 +58,5 @@ export default class ProviderRegistry {
     return this.providers[name];
   }
 }
+
+export default ProviderRegistry;

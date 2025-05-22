@@ -1,10 +1,35 @@
 // BaseProvider: defines the interface and common utilities for all image providers
 export default class BaseProvider {
-  constructor(config) {
+  constructor(config, emitter) { // Added emitter
     this.config = config;
+    this.emitter = emitter; // Store the emitter instance (PlaywrightCrawler instance)
+    this.name = 'BaseProvider'; // Should be overridden by subclasses
   }
 
-  async initialize() {}
+  // Helper to emit log events via the main crawler emitter
+  emitLog(level, message) {
+    if (this.emitter) {
+      this.emitter.emit('log', level, `[${this.name}] ${message}`);
+    } else {
+      // Fallback if no emitter is present (e.g., during direct testing)
+      console.log(`[${this.name} - ${level.toUpperCase()}] ${message}`);
+    }
+  }
+  
+  // Helper to emit progress events via the main crawler emitter
+  emitProgress(progressData) {
+    if (this.emitter) {
+      // Add provider name to progress data
+      this.emitter.emit('progress', { provider: this.name, ...progressData });
+    }
+  }
+
+
+  async initialize(crawlerEmitter) { // crawlerEmitter might be passed if needed for specific init logic
+    // If an emitter is passed here, it's likely the crawler itself.
+    // Could also rely on this.emitter set in constructor.
+    this.emitLog('info', 'Provider initialized.');
+  }
 
   /**
    * Fetches image URLs from the provider.

@@ -11,7 +11,7 @@ const platform = getPlatformInfo();
  * @param {...string} segments - Path segments to join
  * @returns {string} Absolute path
  */
-export const resolvePath = (...segments) => {
+const resolvePath = (...segments) => {
   return path.resolve(process.cwd(), ...segments);
 };
 
@@ -20,7 +20,7 @@ export const resolvePath = (...segments) => {
  * @param {string} dirPath - Directory path
  * @returns {Promise<string>} The resolved directory path
  */
-export const ensureDir = async (dirPath) => {
+const ensureDir = async (dirPath) => {
   try {
     await fs.ensureDir(dirPath);
     return dirPath;
@@ -35,7 +35,7 @@ export const ensureDir = async (dirPath) => {
  * @param {string} path - Path to check
  * @returns {Promise<boolean>} True if path exists
  */
-export const pathExists = async (path) => {
+const pathExists = async (path) => {
   try {
     await fs.access(path);
     return true;
@@ -48,7 +48,7 @@ export const pathExists = async (path) => {
  * Gets the default download directory based on platform
  * @returns {string} Default download directory path
  */
-export const getDefaultDownloadDir = () => {
+const getDefaultDownloadDir = () => {
   try {
     const config = configManager.getConfig();
     if (config && config.platformSpecific) {
@@ -87,7 +87,7 @@ export const getDefaultDownloadDir = () => {
  * Gets the default scan directory based on platform
  * @returns {string} Default scan directory path
  */
-export const getDefaultScanDir = () => {
+const getDefaultScanDir = () => {
   try {
     const config = configManager.getConfig();
     if (config && config.platformSpecific) {
@@ -129,7 +129,7 @@ export const getDefaultScanDir = () => {
  * @param {string} filePath - Path to check
  * @returns {boolean} True if path is within project directory
  */
-export const isInProjectDir = (filePath) => {
+const isInProjectDir = (filePath) => {
   const projectPath = process.cwd();
   const relative = path.relative(projectPath, filePath);
   return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
@@ -141,7 +141,7 @@ export const isInProjectDir = (filePath) => {
  * @param {string[]} [extensions] - File extensions to include (without dot)
  * @returns {Promise<string[]>} Array of file paths
  */
-export const getFilesRecursively = async (dir, extensions) => {
+const getFilesRecursively = async (dir, extensions) => {
   const files = [];
   
   try {
@@ -176,7 +176,7 @@ export const getFilesRecursively = async (dir, extensions) => {
  * @param {string} filename - Original filename
  * @returns {string} Sanitized filename
  */
-export const sanitizeFilename = (filename) => {
+const sanitizeFilename = (filename) => {
   if (!filename) return '';
   
   // Remove invalid characters
@@ -192,7 +192,7 @@ export const sanitizeFilename = (filename) => {
  * @param {string|number} sizeStr - Size string (e.g., '100KB', '1.5MB') or number (bytes)
  * @returns {number} Size in bytes
  */
-export const parseSize = (sizeStr) => {
+const parseSize = (sizeStr) => {
   if (typeof sizeStr === 'number') return sizeStr;
   
   // If it's just a number, return it as bytes
@@ -224,7 +224,7 @@ export const parseSize = (sizeStr) => {
   return Math.floor(size * units[unit]);
 };
 
-export default {
+export {
   resolvePath,
   ensureDir,
   pathExists,
@@ -233,5 +233,5 @@ export default {
   isInProjectDir,
   getFilesRecursively,
   sanitizeFilename,
-  parseSize,
+  parseSize
 };

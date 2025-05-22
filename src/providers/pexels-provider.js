@@ -1,25 +1,26 @@
 import BaseProvider from './base-provider.js';
-import fetch from 'node-fetch';
-import fs from 'fs-extra';
-import path from 'path';
-import Logger from '../utils/logger.js';
+import fetch from 'node-fetch'; // node-fetch is ESM compatible
+// fs and path are not used directly in this file by the looks of it, but good practice if they were.
+// import fs from 'fs-extra';
+// import path from 'path';
+// import Logger from '../utils/logger.js'; // Use this.emitLog
 
 // Simple and reliable Pexels provider using their public API
 export default class PexelsProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
+  constructor(config, emitter) { // Added emitter
+    super(config, emitter); // Pass emitter to BaseProvider
     this.apiKey = config.pexelsApiKey || process.env.PEXELS_API_KEY;
     this.baseUrl = 'https://api.pexels.com/v1/search';
-    this.name = 'Pexels'; // For logging
+    this.name = 'Pexels';
   }
 
   async initialize() {
     if (!this.apiKey) {
-      Logger.warn(`[${this.name}] API key is missing. PexelsProvider will not be able to fetch images.`);
+      this.emitLog('warn', `API key is missing. PexelsProvider will not be able to fetch images.`);
       // Optionally, throw an error or disable the provider if API key is crucial
       // throw new Error('Pexels API key is required for PexelsProvider.');
     }
-    Logger.info('PexelsProvider initialized.');
+    this.emitLog('info', 'PexelsProvider initialized.');
   }
 
   /**
@@ -31,13 +32,15 @@ export default class PexelsProvider extends BaseProvider {
    */
   async fetchImageUrls(query, options, playwrightPage) { // eslint-disable-line no-unused-vars
     if (!this.apiKey) {
-      Logger.error(`[${this.name}] API key is missing. Cannot fetch images.`);
+      this.emitLog('error', `API key is missing. Cannot fetch images.`);
       return [];
     }
 
-    const perPage = options.maxResults || this.config.perPage || 30;
+    const perPage = options.maxResults || this.config.perPage || 30; // Use maxResults from UI options
     const url = `${this.baseUrl}?query=${encodeURIComponent(query)}&per_page=${perPage}`;
-    Logger.info(`[${this.name}] Fetching from ${url}`);
+    this.emitLog('info', `Fetching from ${url}`);
+    this.emitProgress({ foundCount: 0, requestedCount: perPage, message: `Fetching from Pexels API...` });
+
 
     try {
       const response = await fetch(url, {
@@ -46,7 +49,7 @@ export default class PexelsProvider extends BaseProvider {
 
       if (!response.ok) {
         const errorBody = await response.text();
-        Logger.error(`[${this.name}] API error: ${response.status} - ${response.statusText}. Body: ${errorBody}`);
+        this.emitLog('error', `API error: ${response.status} - ${response.statusText}. Body: ${errorBody}`);
         throw new Error(`Pexels API error: ${response.status} - ${errorBody}`);
       }
 
@@ -54,11 +57,11 @@ export default class PexelsProvider extends BaseProvider {
       const photos = data.photos || [];
       const imageUrls = photos.map(photo => photo.src && photo.src.original).filter(Boolean);
       
-      Logger.info(`[${this.name}] Found ${imageUrls.length} image URLs.`);
+      this.emitLog('info', `Found ${imageUrls.length} image URLs.`);
+      this.emitProgress({ foundCount: imageUrls.length, requestedCount: perPage, message: `Found ${imageUrls.length} images from Pexels API.` });
       return imageUrls;
     } catch (error) {
-      Logger.error(`[${this.name}] Error fetching images for "${query}": ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error fetching images for "${query}": ${error.message}`);
       return []; // Return empty array on error to allow other providers to continue
     }
   }
@@ -70,7 +73,9 @@ export default class PexelsProvider extends BaseProvider {
    * @returns {Promise<string>} - The full-size image URL.
    */
   async getFullSizeImage(page, imageUrl) { // eslint-disable-line no-unused-vars
-    Logger.debug(`[${this.name}] getFullSizeImage called for: ${imageUrl}. Returning as is.`);
+    this.emitLog('debug', `getFullSizeImage called for: ${imageUrl}. Returning as is for Pexels.`);
     return imageUrl;
   }
 }
+
+

@@ -1,19 +1,19 @@
 import BaseProvider from './base-provider.js';
 import fetch from 'node-fetch';
-import fs from 'fs-extra';
-import path from 'path';
-import Logger from '../utils/logger.js';
+// import Logger from '../utils/logger.js';
 
-// Wikimedia Commons provider using their public API
+/**
+ * Wikimedia Commons provider using their public API
+ */
 export default class WikimediaProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
+  constructor(config, emitter) { // Added emitter
+    super(config, emitter); // Pass emitter to BaseProvider
     this.baseUrl = 'https://commons.wikimedia.org/w/api.php';
-    this.name = 'Wikimedia'; // For logging
+    this.name = 'Wikimedia';
   }
 
   async initialize() {
-    Logger.info('WikimediaProvider initialized.');
+    this.emitLog('info', 'WikimediaProvider initialized.');
   }
 
   /**
@@ -36,15 +36,16 @@ export default class WikimediaProvider extends BaseProvider {
     // format=json: Return results in JSON format.
     // origin=*: Required for cross-domain AJAX requests from a browser, good practice for server-side too.
     const apiUrl = `${this.baseUrl}?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=${maxResults}&prop=imageinfo&iiprop=url&format=json&origin=*`;
-    
-    Logger.info(`[${this.name}] Fetching from ${apiUrl}`);
+
+    this.emitLog('info', `Fetching from ${apiUrl}`);
+    this.emitProgress({ foundCount: 0, requestedCount: maxResults, message: `Fetching from Wikimedia API...` });
     const imageUrls = [];
 
     try {
       const response = await fetch(apiUrl);
       if (!response.ok) {
         const errorBody = await response.text();
-        Logger.error(`[${this.name}] API error: ${response.status} - ${response.statusText}. Body: ${errorBody}`);
+        this.emitLog('error', `API error: ${response.status} - ${response.statusText}. Body: ${errorBody}`);
         throw new Error(`Wikimedia API error: ${response.status} - ${errorBody}`);
       }
 
@@ -57,11 +58,11 @@ export default class WikimediaProvider extends BaseProvider {
           }
         }
       }
-      Logger.info(`[${this.name}] Found ${imageUrls.length} image URLs.`);
+      this.emitLog('info', `Found ${imageUrls.length} image URLs.`);
+      this.emitProgress({ foundCount: imageUrls.length, requestedCount: maxResults, message: `Found ${imageUrls.length} images from Wikimedia API.` });
       return imageUrls;
     } catch (error) {
-      Logger.error(`[${this.name}] Error fetching images for "${query}": ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error fetching images for "${query}": ${error.message}`);
       return [];
     }
   }
@@ -73,7 +74,9 @@ export default class WikimediaProvider extends BaseProvider {
    * @returns {Promise<string>} - The full-size image URL.
    */
   async getFullSizeImage(page, imageUrl) { // eslint-disable-line no-unused-vars
-    Logger.debug(`[${this.name}] getFullSizeImage called for: ${imageUrl}. Returning as is.`);
+    this.emitLog('debug', `getFullSizeImage called for: ${imageUrl}. Returning as is for Wikimedia.`);
     return imageUrl;
   }
 }
+
+

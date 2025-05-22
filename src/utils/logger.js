@@ -127,6 +127,9 @@ const initLogger = async () => {
 };
 
 // Auto-initialize logger
-initLogger().catch(console.error);
+// Consider if auto-init is desired or if it should be called explicitly by the app.
+// For Electron, it might be better to initialize after app ready or when config is loaded.
+// initLogger().catch(console.error); // Commenting out auto-init for now
 
+export { initLogger };
 export default Logger;

@@ -1,18 +1,17 @@
 import BaseProvider from './base-provider.js';
-import Logger from '../utils/logger.js';
+// import Logger from '../utils/logger.js';
 
 export default class UnsplashProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
+  constructor(config, emitter) { // Added emitter
+    super(config, emitter); // Pass emitter to BaseProvider
     this.name = 'Unsplash';
-    // Unsplash API key can be used for more robust access if available.
-    // this.apiKey = this.config.apiKey; 
+    // this.apiKey = this.config.apiKey;
   }
 
   async initialize() {
-    Logger.info('UnsplashProvider initialized.');
+    this.emitLog('info', 'UnsplashProvider initialized.');
     // if (!this.config.apiKey) {
-    //   Logger.warn(`[${this.name}] API key not configured. Scraping may be less reliable or subject to stricter limits.`);
+    //   this.emitLog('warn', `API key not configured. Scraping may be less reliable or subject to stricter limits.`);
     // }
   }
 
@@ -28,56 +27,45 @@ export default class UnsplashProvider extends BaseProvider {
     const searchUrl = `https://unsplash.com/s/photos/${encodeURIComponent(query)}`;
     const imageUrls = new Set();
 
-    Logger.info(`[${this.name}] Searching for "${query}" at ${searchUrl}`);
+    this.emitLog('info', `Searching for "${query}" at ${searchUrl}`);
 
     try {
       await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: this.config.timeout || 60000 });
 
-      // Handle potential pop-ups or cookie banners if Unsplash uses them
-      // try {
-      //   const acceptButton = await page.waitForSelector('button.accept-cookie-selector', { timeout: 3000 });
-      //   await acceptButton.click();
-      //   Logger.info(`[${this.name}] Clicked cookie consent button.`);
-      //   await page.waitForLoadState('networkidle', { timeout: 5000 });
-      // } catch (e) {
-      //   Logger.debug(`[${this.name}] No cookie consent dialog found or error clicking.`);
-      // }
-
-      // Unsplash loads images as you scroll. Images are often within figure > div > img tags with srcset.
-      const imageSelector = 'figure a[href*="/photos/"] img[srcset]'; // More specific selector for Unsplash structure
+      const imageSelector = 'figure a[href*="/photos/"] img[srcset]';
       let scrollCount = 0;
       const maxScrolls = this.config.maxScrollsUnsplash || 15;
       let noNewImagesCount = 0;
 
       while (imageUrls.size < maxResults && scrollCount < maxScrolls) {
         const currentImageCount = imageUrls.size;
-        const images = await page.locator(imageSelector).evaluateAll(imgs => 
+        const images = await page.locator(imageSelector).evaluateAll(imgs =>
           imgs.map(img => {
             const srcset = img.getAttribute('srcset');
             if (!srcset) return null;
-            // Heuristic: pick a URL from srcset, prefer larger ones if identifiable or just the last one
             const sources = srcset.split(',').map(s => s.trim().split(' ')[0]);
-            return sources.pop(); // Get the last URL, often the largest listed
+            return sources.pop();
           }).filter(url => url)
         );
 
         images.forEach(url => {
           if (imageUrls.size < maxResults && url) {
-            // Ensure URL is absolute
             try {
-                const absoluteUrl = new URL(url, page.url()).toString();
-                imageUrls.add(absoluteUrl);
+              const absoluteUrl = new URL(url, page.url()).toString();
+              imageUrls.add(absoluteUrl);
             } catch (e) {
-                Logger.warn(`[${this.name}] Invalid URL found: ${url}`);
+              this.emitLog('warn', `Invalid URL found: ${url}`);
             }
           }
         });
 
-        Logger.info(`[${this.name}] Scroll ${scrollCount + 1}/${maxScrolls}. Found ${imageUrls.size} unique image URLs (target: ${maxResults}).`);
+        this.emitLog('info', `Scroll ${scrollCount + 1}/${maxScrolls}. Found ${imageUrls.size} unique image URLs (target: ${maxResults}).`);
+        this.emitProgress({ foundCount: imageUrls.size, requestedCount: maxResults, message: `Scrolled ${scrollCount + 1} times.` });
+
         if (imageUrls.size >= maxResults) break;
 
         await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
-        await page.waitForTimeout(this.config.scrollDelayUnsplash || 2500); // Unsplash might need a bit more time
+        await page.waitForTimeout(this.config.scrollDelayUnsplash || 2500);
         scrollCount++;
 
         if (imageUrls.size === currentImageCount) {
@@ -87,17 +75,16 @@ export default class UnsplashProvider extends BaseProvider {
         }
 
         if (noNewImagesCount >= (this.config.noNewImagesRetriesUnsplash || 3)) {
-          Logger.info(`[${this.name}] No new images found after ${noNewImagesCount} scrolls. Stopping scroll.`);
+          this.emitLog('info', `No new images found after ${noNewImagesCount} scrolls. Stopping scroll.`);
           break;
         }
       }
 
     } catch (error) {
-      Logger.error(`[${this.name}] Error fetching image URLs for "${query}": ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error fetching image URLs for "${query}": ${error.message}`);
     }
-    
-    Logger.info(`[${this.name}] Found a total of ${imageUrls.size} unique image URLs for "${query}".`);
+
+    this.emitLog('info', `Found a total of ${imageUrls.size} unique image URLs for "${query}".`);
     return Array.from(imageUrls).slice(0, maxResults);
   }
 
@@ -109,27 +96,21 @@ export default class UnsplashProvider extends BaseProvider {
    * @returns {Promise<string>} - The full-size image URL.
    */
   async getFullSizeImage(page, imageUrl) {
-    // The imageUrl from fetchImageUrls (via srcset) is typically already a good candidate.
-    // Unsplash URLs often have query parameters like ?ixlib=rb-4.0.3&...&w=WIDTH&fit=max&fm=jpg&q=QUALITY
-    // We can try to remove or adjust these to get the highest quality, or trust the largest from srcset.
-    Logger.debug(`[${this.name}] getFullSizeImage called for: ${imageUrl}.`);
-    
-    // Example: try to strip some common resizing parameters to get a more 'raw' version
-    // This is a heuristic and might need adjustment based on Unsplash's current URL structure.
+    this.emitLog('debug', `getFullSizeImage called for: ${imageUrl}.`);
     try {
       const urlObj = new URL(imageUrl);
       urlObj.searchParams.delete('w');
       urlObj.searchParams.delete('h');
       urlObj.searchParams.delete('fit');
       urlObj.searchParams.delete('crop');
-      // urlObj.searchParams.set('fm', 'jpg'); // or 'png' if preferred and available
-      // urlObj.searchParams.set('q', '90'); // Set quality if desired
       const cleanedUrl = urlObj.toString();
-      Logger.info(`[${this.name}] Attempting to use cleaned URL: ${cleanedUrl}`);
+      this.emitLog('info', `Attempting to use cleaned URL: ${cleanedUrl}`);
       return cleanedUrl;
     } catch (e) {
-      Logger.warn(`[${this.name}] Could not parse or clean URL ${imageUrl}: ${e.message}`);
-      return imageUrl; // Return original on error
+      this.emitLog('warn', `Could not parse or clean URL ${imageUrl}: ${e.message}`);
+      return imageUrl;
     }
   }
 }
+
+
