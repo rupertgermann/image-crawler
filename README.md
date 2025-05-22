@@ -33,18 +33,75 @@ Image Crawler was created to provide a simple, yet powerful and unified interfac
 
 ## Installation
 
-1. Ensure you have Node.js 18+ installed (v18.17.0 or later recommended for full ES modules support)
-2. Install the package globally:
+### Prerequisites
+
+1. **Windows 10 or later** - The application is tested on Windows 10 and above
+2. **Node.js 18+** (v18.17.0 or later recommended for full ES modules support)
+
+### Automatic Installation (Recommended)
+
+Run the following command to install the application and all required dependencies, including Playwright browsers:
 
 ```bash
+# Install globally
 npm install -g image-crawler
+
+# Install Playwright browsers (this may take a few minutes)
+npx playwright install --with-deps
+
+# Verify installation
+npx playwright test --browser=chromium
 ```
 
-Or use with npx:
+Or use with npx without global installation:
 
 ```bash
 npx image-crawler
+# The first run will prompt to install Playwright browsers if needed
 ```
+
+### Manual Installation (if automatic fails)
+
+If you encounter issues with the automatic installation, follow these steps:
+
+1. Install Visual C++ Redistributable (required for Playwright):
+   - Download from: https://aka.ms/vs/17/release/vc_redist.x64.exe
+   - Run the installer and follow the prompts
+
+2. Install Windows 10+ SDK (required for WebKit):
+   - Download from: https://go.microsoft.com/fwlink/?linkid=2196241
+   - Run the installer and select "Windows 10 SDK"
+
+3. Install the application:
+   ```bash
+   # Install globally
+   npm install -g image-crawler
+   
+   # Install Playwright without browsers
+   npx playwright install-deps
+   
+   # Install browsers one by one (if needed)
+   npx playwright install chromium
+   npx playwright install firefox
+   npx playwright install webkit
+   ```
+
+### Troubleshooting
+
+If you encounter issues during installation:
+
+1. **Proxy Issues**: If behind a corporate proxy, set the proxy environment variables:
+   ```cmd
+   set HTTP_PROXY=http://your-proxy:port
+   set HTTPS_PROXY=http://your-proxy:port
+   ```
+
+2. **Permission Issues**: Run the command prompt as Administrator
+
+3. **Long Paths**: If you see path length errors, enable long paths in Windows:
+   - Open Group Policy Editor (gpedit.msc)
+   - Navigate to: Computer Configuration > Administrative Templates > System > Filesystem
+   - Enable "Enable Win32 long paths"
 
 ## Usage
 
