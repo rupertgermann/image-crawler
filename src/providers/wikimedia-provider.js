@@ -1,12 +1,11 @@
-const BaseProvider = require('./base-provider.js');
-const fetch = require('node-fetch');
-// fs and path are not used directly.
-// const fs = require('fs-extra');
-// const path = require('path');
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+import BaseProvider from './base-provider.js';
+import fetch from 'node-fetch';
+// import Logger from '../utils/logger.js';
 
-// Wikimedia Commons provider using their public API
-class WikimediaProvider extends BaseProvider {
+/**
+ * Wikimedia Commons provider using their public API
+ */
+export default class WikimediaProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.baseUrl = 'https://commons.wikimedia.org/w/api.php';
@@ -80,4 +79,4 @@ class WikimediaProvider extends BaseProvider {
   }
 }
 
-module.exports = WikimediaProvider;
+

@@ -1,7 +1,7 @@
-const BaseProvider = require('./base-provider.js');
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+import BaseProvider from './base-provider.js';
+// import Logger from '../utils/logger.js';
 
-class BingProvider extends BaseProvider {
+export default class BingProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.baseUrl = 'https://www.bing.com/images/search';
@@ -172,4 +172,4 @@ class BingProvider extends BaseProvider {
   }
 }
 
-module.exports = BingProvider;
+

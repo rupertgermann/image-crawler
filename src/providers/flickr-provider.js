@@ -1,12 +1,13 @@
-const BaseProvider = require('./base-provider.js');
-const fetch = require('node-fetch');
+import BaseProvider from './base-provider.js';
+import fetch from 'node-fetch';
+// import Logger from '../utils/logger.js';
+
 // fs and path are not used directly in this file.
-// const fs = require('fs-extra');
-// const path = require('path');
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+// import fs from 'fs-extra';
+// import path from 'path';
 
 // Simple Flickr provider using the public Flickr API (requires API key)
-class FlickrProvider extends BaseProvider {
+export default class FlickrProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.apiKey = config.flickrApiKey || process.env.FLICKR_API_KEY;
@@ -82,4 +83,4 @@ class FlickrProvider extends BaseProvider {
   }
 }
 
-module.exports = FlickrProvider;
+

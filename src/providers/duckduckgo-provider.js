@@ -1,12 +1,12 @@
-const BaseProvider = require('./base-provider.js');
+import BaseProvider from './base-provider.js';
 // fs and path are not directly used. Chromium is also not used here.
-// const fs = require('fs-extra');
-// const path = require('path');
-// const { chromium } = require('playwright'); // Not used directly in this provider
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+// import fs from 'fs-extra';
+// import path from 'path';
+// import { chromium } from 'playwright'; // Not used directly in this provider
+// import Logger from '../utils/logger.js'; // Use this.emitLog
 
 // DuckDuckGo Images provider using Playwright
-class DuckDuckGoProvider extends BaseProvider {
+export default class DuckDuckGoProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.baseUrl = 'https://duckduckgo.com/';
@@ -110,4 +110,4 @@ class DuckDuckGoProvider extends BaseProvider {
   }
 }
 
-module.exports = DuckDuckGoProvider;
+

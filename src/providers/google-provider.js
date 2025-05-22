@@ -1,10 +1,9 @@
 import BaseProvider from './base-provider.js';
-// Logger will be replaced by event emitter in PlaywrightCrawler
 // import Logger from '../utils/logger.js'; 
 
 const GOOGLE_IMAGES_URL = 'https://www.google.com/imghp';
 
-class GoogleProvider extends BaseProvider {
+export default class GoogleProvider extends BaseProvider {
   constructor(config) {
     super(config);
     this.name = 'Google'; // For logging via events
@@ -133,5 +132,3 @@ class GoogleProvider extends BaseProvider {
     return previewUrl;
   }
 }
-
-export default GoogleProvider;

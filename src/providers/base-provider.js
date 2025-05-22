@@ -1,5 +1,5 @@
 // BaseProvider: defines the interface and common utilities for all image providers
-class BaseProvider {
+export default class BaseProvider {
   constructor(config, emitter) { // Added emitter
     this.config = config;
     this.emitter = emitter; // Store the emitter instance (PlaywrightCrawler instance)
@@ -69,5 +69,3 @@ class BaseProvider {
     return previewUrl; // By default, return the same URL
   }
 }
-
-export default BaseProvider;

@@ -1,12 +1,12 @@
-const BaseProvider = require('./base-provider.js');
-const fetch = require('node-fetch'); // node-fetch is CJS compatible
+import BaseProvider from './base-provider.js';
+import fetch from 'node-fetch'; // node-fetch is ESM compatible
 // fs and path are not used directly in this file by the looks of it, but good practice if they were.
-// const fs = require('fs-extra');
-// const path = require('path');
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+// import fs from 'fs-extra';
+// import path from 'path';
+// import Logger from '../utils/logger.js'; // Use this.emitLog
 
 // Simple and reliable Pexels provider using their public API
-class PexelsProvider extends BaseProvider {
+export default class PexelsProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.apiKey = config.pexelsApiKey || process.env.PEXELS_API_KEY;
@@ -78,4 +78,4 @@ class PexelsProvider extends BaseProvider {
   }
 }
 
-module.exports = PexelsProvider;
+

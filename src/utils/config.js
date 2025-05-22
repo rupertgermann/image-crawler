@@ -55,10 +55,10 @@ const DEFAULT_CONFIG = {
       'pixabay',
       'unsplash'
     ],
-    google: { enabled: true, maxResults: 100 },
-    pexels: { enabled: false, maxResults: 30 },
+    google: { enabled: false, maxResults: 100 },
+    pexels: { enabled: true, maxResults: 30 },
     bing: {
-      enabled: false,
+      enabled: true,
       maxResults: 30,
       maxScrollsBing: 15,
       scrollDelayBing: 2000,
@@ -66,21 +66,21 @@ const DEFAULT_CONFIG = {
     },
     flickr: { enabled: false, maxResults: 30 },
     duckduckgo: {
-      enabled: false,
+      enabled: true,
       maxResults: 30,
       maxScrollsDDG: 15,
       loadMoreTimeoutDDG: 10000,
       scrollDelayDDG: 2000
     },
     freeimages: {
-      enabled: false,
+      enabled: true,
       maxResults: 30,
       maxScrollsFreeImages: 10,
       scrollDelayFreeImages: 2500
     },
-    wikimedia: { enabled: false, maxResults: 30 },
-    pixabay: { enabled: false, maxResults: 30 },
-    unsplash: { enabled: false, maxResults: 30 }
+    wikimedia: { enabled: true, maxResults: 30 },
+    pixabay: { enabled: true, maxResults: 30 },
+    unsplash: { enabled: true, maxResults: 30 }
   }
 };
 

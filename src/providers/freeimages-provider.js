@@ -1,11 +1,11 @@
-const BaseProvider = require('./base-provider.js');
+import BaseProvider from './base-provider.js';
 // fs and path are not used directly.
-// const fs = require('fs-extra');
-// const path = require('path');
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+// import fs from 'fs-extra';
+// import path from 'path';
+// import Logger from '../utils/logger.js'; // Use this.emitLog
 
 // FreeImages provider using Playwright (simple grid scraping)
-class FreeImagesProvider extends BaseProvider {
+export default class FreeImagesProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.baseUrl = 'https://www.freeimages.com';
@@ -116,4 +116,4 @@ class FreeImagesProvider extends BaseProvider {
   }
 }
 
-module.exports = FreeImagesProvider;
+

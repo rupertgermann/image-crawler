@@ -1,8 +1,8 @@
-const BaseProvider = require('./base-provider.js');
+import BaseProvider from './base-provider.js';
 // Logger will be replaced by event emitter in PlaywrightCrawler
-// const Logger = require('../utils/logger.js'); 
+// import Logger from '../utils/logger.js';
 
-class PixabayProvider extends BaseProvider {
+export default class PixabayProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.name = 'Pixabay';
@@ -115,4 +115,4 @@ class PixabayProvider extends BaseProvider {
   }
 }
 
-module.exports = PixabayProvider;
+

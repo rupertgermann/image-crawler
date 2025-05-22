@@ -1,7 +1,7 @@
-const BaseProvider = require('./base-provider.js');
-// const Logger = require('../utils/logger.js'); // Use this.emitLog
+import BaseProvider from './base-provider.js';
+// import Logger from '../utils/logger.js';
 
-class UnsplashProvider extends BaseProvider {
+export default class UnsplashProvider extends BaseProvider {
   constructor(config, emitter) { // Added emitter
     super(config, emitter); // Pass emitter to BaseProvider
     this.name = 'Unsplash';
@@ -113,4 +113,4 @@ class UnsplashProvider extends BaseProvider {
   }
 }
 
-module.exports = UnsplashProvider;
+
