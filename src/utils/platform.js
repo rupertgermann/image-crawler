@@ -1,17 +1,13 @@
-import { execSync } from 'child_process';
-import os from 'os';
-import fs from 'fs-extra';
-import { fileURLToPath } from 'url';
-import path from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { execSync } = require('child_process');
+const os = require('os');
+const fs = require('fs-extra');
+const path = require('path');
 
 /**
  * Detects the current platform and returns platform-specific information
  * @returns {Object} Platform information
  */
-export const getPlatformInfo = () => {
+const getPlatformInfo = () => {
   const platform = process.platform;
   const isWindows = platform === 'win32';
   const isMac = platform === 'darwin';
@@ -45,17 +41,17 @@ const getDefaultDownloadPath = (platform, homedir) => {
  * Detects available drives on Windows
  * @returns {Promise<string[]>} Array of available drive letters
  */
-export const getWindowsDrives = async () => {
+const getWindowsDrives = async () => {
   try {
     // Try using the windows-drive-letters package if available
     try {
-      const { getDriveLetters } = await import('windows-drive-letters');
-      return await getDriveLetters();
+      const { getDriveLetters } = require('windows-drive-letters'); // Changed to require
+      return await getDriveLetters(); // Assuming getDriveLetters is async
     } catch (e) {
       // Fallback to native implementation if package is not available
       if (process.platform !== 'win32') return [];
       
-      const stdout = execSync('wmic logicaldisk get name').toString();
+      const stdout = execSync('wmic logicaldisk get name').toString(); // Keep execSync for now
       return stdout
         .split('\n')
         .map(line => line.trim())
@@ -72,7 +68,7 @@ export const getWindowsDrives = async () => {
  * @param {string} path - Path to check
  * @returns {Promise<boolean>} True if the path is a directory
  */
-export const isDirectory = async (path) => {
+const isDirectory = async (path) => {
   try {
     const stat = await fs.stat(path);
     return stat.isDirectory();
@@ -81,7 +77,7 @@ export const isDirectory = async (path) => {
   }
 };
 
-export default {
+module.exports = {
   getPlatformInfo,
   getWindowsDrives,
   isDirectory

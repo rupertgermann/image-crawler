@@ -1,18 +1,18 @@
-import BaseProvider from './base-provider.js';
-import Logger from '../utils/logger.js';
+const BaseProvider = require('./base-provider.js');
+// Logger will be replaced by event emitter in PlaywrightCrawler
+// const Logger = require('../utils/logger.js'); 
 
-export default class PixabayProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
+class PixabayProvider extends BaseProvider {
+  constructor(config, emitter) { // Added emitter
+    super(config, emitter); // Pass emitter to BaseProvider
     this.name = 'Pixabay';
-    // An API key is highly recommended for Pixabay for stability and better limits.
-    // this.apiKey = this.config.apiKey; 
+    // this.apiKey = this.config.apiKey; // API key usage can be added later
   }
 
-  async initialize() {
-    Logger.info('PixabayProvider initialized.');
+  async initialize() { // Emitter is available via this.emitter from BaseProvider
+    this.emitLog('info', 'PixabayProvider initialized.');
     if (!this.config.apiKey) {
-      Logger.warn(`[${this.name}] API key not configured. Scraping may be less reliable. Consider adding PIXABAY_API_KEY.`);
+      this.emitLog('warn', `API key not configured. Scraping may be less reliable. Consider adding PIXABAY_API_KEY.`);
     }
   }
 
@@ -26,65 +26,44 @@ export default class PixabayProvider extends BaseProvider {
   async fetchImageUrls(query, options, page) {
     const { maxResults } = options;
     const searchUrl = `https://pixabay.com/images/search/${encodeURIComponent(query)}/?safesearch=true`;
-    const imageUrls = new Set();
+    const imageUrls = new Set(); // Stores detail page URLs
 
-    Logger.info(`[${this.name}] Searching for "${query}" at ${searchUrl}`);
+    this.emitLog('info', `Searching for "${query}" at ${searchUrl}`);
 
     try {
       await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: this.config.timeout || 60000 });
 
-      // Pixabay might show a cookie banner or other overlays
-      // Add selectors here if needed, e.g.:
-      // try {
-      //   const acceptButton = await page.waitForSelector('button.accept-button-selector', { timeout: 3000 });
-      //   await acceptButton.click();
-      //   Logger.info(`[${this.name}] Clicked cookie consent button.`);
-      //   await page.waitForLoadState('networkidle', { timeout: 5000 });
-      // } catch (e) {
-      //   Logger.debug(`[${this.name}] No cookie consent dialog found or error clicking.`);
-      // }
-
-      const imageLinksSelector = 'div.item > a'; // Links to image detail pages
+      const imageLinksSelector = 'div.item > a'; 
       let scrollCount = 0;
       const maxScrolls = this.config.maxScrollsPixabay || 10;
 
       while (imageUrls.size < maxResults && scrollCount < maxScrolls) {
-        const links = await page.locator(imageLinksSelector).evaluateAll(nodes => 
-            nodes.map(n => n.href).filter(href => href)
+        const links = await page.locator(imageLinksSelector).evaluateAll(nodes =>
+          nodes.map(n => n.href).filter(href => href)
         );
         links.forEach(link => {
           if (imageUrls.size < maxResults) {
-            imageUrls.add(link); // These are links to detail pages
+            imageUrls.add(link);
           }
         });
+        
+        this.emitLog('info', `Scroll ${scrollCount + 1}/${maxScrolls}. Found ${imageUrls.size} image detail URLs (target: ${maxResults}).`);
+        this.emitProgress({ foundCount: imageUrls.size, requestedCount: maxResults, message: `Scrolled ${scrollCount + 1} times.` });
 
-        Logger.info(`[${this.name}] Scroll ${scrollCount + 1}/${maxScrolls}. Found ${imageUrls.size} image detail URLs (target: ${maxResults}).`);
         if (imageUrls.size >= maxResults) break;
 
         await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
         await page.waitForTimeout(this.config.scrollDelay || 2000);
         scrollCount++;
-
-        // Check if a 'Load more' button exists, if Pixabay uses one
-        // const loadMoreButton = page.locator('button.load-more-selector');
-        // if (await loadMoreButton.isVisible()) {
-        //   Logger.info(`[${this.name}] Clicking 'Load More' button.`);
-        //   await loadMoreButton.click();
-        //   await page.waitForTimeout(this.config.scrollDelay || 3000);
-        // } else if (links.length === 0 && scrollCount > 1) {
-        //    Logger.info(`[${this.name}] No new images found and no 'Load More' button. Stopping scroll.`);
-        //    break;
-        // }
       }
 
     } catch (error) {
-      Logger.error(`[${this.name}] Error fetching image URLs for "${query}": ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error fetching image URLs for "${query}": ${error.message}`);
       // Do not throw, return what was found
     }
-    
-    Logger.info(`[${this.name}] Found a total of ${imageUrls.size} unique image detail page URLs for "${query}".`);
-    return Array.from(imageUrls).slice(0, maxResults); // Return detail page URLs
+
+    this.emitLog('info', `Found a total of ${imageUrls.size} unique image detail page URLs for "${query}".`);
+    return Array.from(imageUrls).slice(0, maxResults);
   }
 
   /**
@@ -94,51 +73,46 @@ export default class PixabayProvider extends BaseProvider {
    * @returns {Promise<string|null>} - The full-size image URL, or null if not found.
    */
   async getFullSizeImage(page, detailPageUrl) {
-    Logger.debug(`[${this.name}] Getting full-size image from detail page: ${detailPageUrl}`);
+    this.emitLog('debug', `Getting full-size image from detail page: ${detailPageUrl}`);
     try {
       await page.goto(detailPageUrl, { waitUntil: 'networkidle', timeout: this.config.timeout || 60000 });
-      
-      // Common selectors for the main image or download button on Pixabay detail page
-      // Adjust these selectors based on Pixabay's current HTML structure.
+
       const imageSelectors = [
-        'img[srcset*="__large"]', // Often a good indicator for a large image
-        'div.media_wrapper img', // A common wrapper
-        'a[href*="/download/"]', // A download link might exist
-        'picture > source[srcset]', // Check picture element
-        'img[src*="pixabay.com/get/"]' // Direct image links from Pixabay sometimes follow this pattern
+        'img[srcset*="__large"]',
+        'div.media_wrapper img',
+        'a[href*="/download/"]',
+        'picture > source[srcset]',
+        'img[src*="pixabay.com/get/"]'
       ];
 
       for (const selector of imageSelectors) {
         const element = page.locator(selector).first();
-        if (await element.isVisible({timeout:1000})) {
-          if (element.getByRole('link')) { // If it's an <a> tag (download link)
+        if (await element.isVisible({ timeout: 1000 })) {
+          if ((await element.evaluate(node => node.tagName)) === 'A') { // Check if it's an <a> tag
              const href = await element.getAttribute('href');
              if (href) {
-                // If it's a relative download link, make it absolute
                 const fullUrl = new URL(href, page.url()).toString();
-                Logger.info(`[${this.name}] Found download link: ${fullUrl}`);
-                // This might lead to another page or direct download. For now, assume it is the direct file or leads to it.
-                // Further navigation might be needed if it's not a direct image link.
-                return fullUrl; 
+                this.emitLog('info', `Found download link: ${fullUrl}`);
+                return fullUrl;
              }
-          } else { // If it's an <img> or <source> tag
+          } else {
             let imageUrl = await element.getAttribute('src') || await element.getAttribute('srcset');
             if (imageUrl) {
-              // If srcset, take the largest or first one
               if (imageUrl.includes(',')) imageUrl = imageUrl.split(',').pop().trim().split(' ')[0];
               const fullUrl = new URL(imageUrl, page.url()).toString();
-              Logger.info(`[${this.name}] Found full-size image source: ${fullUrl}`);
+              this.emitLog('info', `Found full-size image source: ${fullUrl}`);
               return fullUrl;
             }
           }
         }
       }
-      Logger.warn(`[${this.name}] Could not find a definitive full-size image URL on ${detailPageUrl}. Using detail page URL as fallback.`);
-      return detailPageUrl; // Fallback to detail page URL if specific high-res not found
+      this.emitLog('warn', `Could not find a definitive full-size image URL on ${detailPageUrl}. Using detail page URL as fallback.`);
+      return detailPageUrl;
     } catch (error) {
-      Logger.error(`[${this.name}] Error getting full-size image from ${detailPageUrl}: ${error.message}`);
-      Logger.debug(error.stack);
-      return detailPageUrl; // Fallback to the preview URL on error
+      this.emitLog('error', `Error getting full-size image from ${detailPageUrl}: ${error.message}`);
+      return detailPageUrl;
     }
   }
 }
+
+module.exports = PixabayProvider;

@@ -1,84 +1,129 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import sharp from 'sharp';
-import Logger from '../utils/logger.js';
-import * as validators from '../utils/validators.js';
-import * as pathUtils from '../utils/paths.js';
-import configManager from '../utils/config.js';
-import { computeFileHash } from '../utils/hash-utils.js';
+const fs = require('fs-extra');
+const path = require('path');
+const sharp = require('sharp');
+const EventEmitter = require('events');
+// Logger is not directly used anymore, events are emitted instead.
+// const Logger = require('../utils/logger.js'); 
+const validators = require('../utils/validators.js');
+const pathUtils = require('../utils/paths.js');
+const configManager = require('../utils/config.js'); // Is CJS
+const { computeFileHash } = require('../utils/hash-utils.js'); // Is CJS
+const { DEFAULT_CONFIG } = require('../utils/config.js'); // Get DEFAULT_CONFIG
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-import { DEFAULT_CONFIG } from '../utils/config.js';
-
-class LocalCrawler {
+class LocalCrawler extends EventEmitter {
   constructor(options = {}) {
-    // Merge: CLI/explicit options > config file > DEFAULT_CONFIG
-    const config = configManager.getConfig();
-    this.options = { ...DEFAULT_CONFIG, ...config, ...options };
+    super();
+    const config = configManager.getConfig(); // Get merged config
     
-    // Ensure maxFiles is set (use maxDownloads as fallback if needed)
-    if (!this.options.maxFiles && this.options.maxDownloads) {
-      this.options.maxFiles = this.options.maxDownloads;
-    } else if (!this.options.maxFiles) {
-      this.options.maxFiles = 50; // Absolute fallback
+    // Options merging: explicit constructor options > config file settings > DEFAULT_CONFIG
+    // Renderer sends options like sourceDir, outputDir, minWidth etc. directly.
+    // These should override anything from config file or defaults for this specific scan.
+    this.options = { 
+      ...DEFAULT_CONFIG, // Base defaults
+      ...config,         // Config file values
+      ...options         // Explicitly passed options from Electron UI
+    };
+
+    // Normalize option names (renderer uses maxDownloads and extensions)
+    if (this.options.maxDownloads === undefined && this.options.maxFiles !== undefined) {
+        this.options.maxDownloads = this.options.maxFiles;
+    }
+    if (this.options.extensions === undefined && this.options.fileTypes !== undefined) {
+        this.options.extensions = this.options.fileTypes;
+    }
+
+
+    // Fallback for maxDownloads if still not set
+    if (this.options.maxDownloads === undefined || this.options.maxDownloads === null || this.options.maxDownloads <=0) {
+      this.options.maxDownloads = Infinity; // Process all files if not specified or invalid
+      this.emit('log', 'info', `Max files not specified or invalid, set to unlimited.`);
+    } else {
+      this.emit('log', 'info', `Maximum file limit set to: ${this.options.maxDownloads} files.`);
     }
     
-    // Special case: sourceDir/platform-specific
+    // Ensure sourceDir and outputDir are set (these should be passed by renderer)
     if (!this.options.sourceDir) {
-      this.options.sourceDir = configManager.getPlatformSettings()?.defaultScanPath || path.join(platform.homedir, 'Pictures');
+        const defaultScan = pathUtils.getDefaultScanDir(); // from paths.js
+        this.emit('log', 'warn', `Source directory not provided, using default: ${defaultScan}`);
+        this.options.sourceDir = defaultScan;
     }
     if (!this.options.outputDir) {
-      this.options.outputDir = pathUtils.getDefaultDownloadDir();
+        const defaultOutput = pathUtils.getDefaultDownloadDir(); // from paths.js
+        this.emit('log', 'warn', `Output directory not provided, using default: ${defaultOutput}`);
+        this.options.outputDir = defaultOutput;
     }
-    this.fileCount = 0;
-    this.processedCount = 0; // Track total files processed, not just copied
+    
+    // Convert minFileSize from string (e.g., "50KB") to bytes
+    if (typeof this.options.minSize === 'string') {
+        this.options.minFileSize = pathUtils.parseSize(this.options.minSize);
+    } else if (typeof this.options.minSize === 'number') {
+        this.options.minFileSize = this.options.minSize; // Already a number
+    } else {
+        this.options.minFileSize = DEFAULT_CONFIG.minFileSize ? pathUtils.parseSize(DEFAULT_CONFIG.minFileSize) : 0;
+    }
+
+
+    this.fileCount = 0; // Files copied
+    this.processedCount = 0;
     this.skippedFiles = 0;
     this.errorFiles = 0;
+    this.totalFilesToScan = 0; // Will be estimated first for progress
     this.seenHashes = new Set();
-    
-    Logger.info(`Maximum file limit set to: ${this.options.maxFiles} files`);
   }
 
-  /**
-   * Start the crawling process
-   */
+  async _estimateTotalFiles(dir) {
+    let count = 0;
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          count += await this._estimateTotalFiles(fullPath);
+        } else if (entry.isFile()) {
+          // Basic check for extension matching if possible
+          const ext = path.extname(fullPath).toLowerCase().substring(1);
+          if (this.options.extensions && this.options.extensions.includes(ext)) {
+            count++;
+          } else if (!this.options.extensions || this.options.extensions.length === 0) {
+            count++; // If no extensions specified, count all files
+          }
+        }
+      }
+    } catch(e) {
+        this.emit('log', 'error', `Error estimating files in ${dir}: ${e.message}`);
+    }
+    return count;
+  }
+
   async start() {
     try {
-      Logger.info('Starting local crawler...');
-      Logger.debug(`Options: ${JSON.stringify(this.options, null, 2)}`);
+      this.emit('log', 'info', 'Starting local crawler...');
+      this.emit('log', 'debug', `Effective options: ${JSON.stringify(this.options, null, 2)}`);
 
-      // Validate source directory
       const sourceValidation = await validators.validateDirectory(this.options.sourceDir);
       if (!sourceValidation.valid) {
+        this.emit('error', `Source directory is invalid: ${sourceValidation.message}`);
         throw new Error(`Source directory is invalid: ${sourceValidation.message}`);
       }
 
-      // Validate output directory is defined
       if (!this.options.outputDir) {
-        Logger.warn('Output directory is undefined, using default directory');
-        this.options.outputDir = path.join(process.cwd(), 'downloads');
-        Logger.info(`Using default output directory: ${this.options.outputDir}`);
+        this.emit('error', 'Output directory is undefined.');
+        throw new Error('Output directory is undefined.');
       }
-
-      try {
-        // Ensure output directory exists
-        Logger.debug(`Ensuring output directory exists: ${this.options.outputDir}`);
-        await pathUtils.ensureDir(this.options.outputDir);
-      } catch (error) {
-        Logger.error(`Failed to ensure directory exists: ${this.options.outputDir}`, error);
-        throw new Error(`Failed to create output directory: ${error.message}`);
-      }
-
-      // Validate output directory is writable
+      await pathUtils.ensureDir(this.options.outputDir);
       const outputValidation = await validators.validateWritable(this.options.outputDir);
       if (!outputValidation.valid) {
+        this.emit('error', `Output directory is not writable: ${outputValidation.message}`);
         throw new Error(`Output directory is not writable: ${outputValidation.message}`);
       }
+      
+      this.emit('log', 'info', `Estimating total files in ${this.options.sourceDir}...`);
+      this.totalFilesToScan = await this._estimateTotalFiles(this.options.sourceDir);
+      this.emit('log', 'info', `Estimated ${this.totalFilesToScan} potential files to scan.`);
+      this.emit('progress', { processed: 0, total: this.totalFilesToScan, currentFile: '' });
 
-      // Initialize seen hashes from existing files (recursive)
+
+      this.emit('log', 'info', 'Scanning output directory for existing file hashes...');
       const scanHashes = async (dir) => {
         const entries = await fs.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
@@ -86,173 +131,154 @@ class LocalCrawler {
           if (entry.isDirectory()) {
             await scanHashes(fullPath);
           } else if (entry.isFile()) {
-            const h = await computeFileHash(fullPath);
-            this.seenHashes.add(h);
+            try {
+                const h = await computeFileHash(fullPath);
+                this.seenHashes.add(h);
+            } catch(hashError){
+                this.emit('log', 'warn', `Could not compute hash for existing file ${fullPath}: ${hashError.message}`);
+            }
           }
         }
       };
       await scanHashes(this.options.outputDir);
+      this.emit('log', 'info', `Found ${this.seenHashes.size} existing file hashes.`);
 
-      // Start scanning
-      Logger.info(`Scanning directory: ${this.options.sourceDir}`);
+      this.emit('log', 'info', `Scanning source directory: ${this.options.sourceDir}`);
       await this.scanDirectory(this.options.sourceDir);
 
-      // Report on the results
-      if (this.fileCount < this.options.maxFiles) {
-        Logger.warn(`Only copied ${this.fileCount}/${this.options.maxFiles} files`);
-        Logger.info('This may be because not enough files matched your criteria (size/dimensions/type).');
-      } else {
-        Logger.info(`Successfully copied exactly ${this.fileCount} files as requested`);
-      }
-      
-      Logger.success(`Crawling completed. Files processed: ${this.processedCount}, copied: ${this.fileCount}, skipped: ${this.skippedFiles}, errors: ${this.errorFiles}`);
-      return {
-        processed: this.processedCount,
-        copied: this.fileCount,
-        skipped: this.skippedFiles,
-        errors: this.errorFiles,
-        maxFiles: this.options.maxFiles
+      const summary = {
+        processedFiles: this.processedCount,
+        foundImages: this.fileCount, // In this context, foundImages means copied images
+        copiedImages: this.fileCount,
+        skippedFiles: this.skippedFiles,
+        errorCount: this.errorFiles,
+        maxFilesReached: this.fileCount >= this.options.maxDownloads
       };
+      this.emit('log', 'info', `Crawling completed. Summary: ${JSON.stringify(summary)}`);
+      this.emit('complete', summary);
+      return summary;
+
     } catch (error) {
-      Logger.error('Error during crawling:', error);
-      throw error;
+      this.emit('log', 'error', `Error during crawling: ${error.message}`);
+      this.emit('error', `Crawling failed: ${error.message}`, error.stack);
+      throw error; // Re-throw for main.js to catch
     }
   }
 
-  /**
-   * Recursively scan a directory for image files
-   * @param {string} dir - Directory to scan
-   */
   async scanDirectory(dir) {
     try {
-      // If we've already reached the max files, don't scan further
-      if (this.fileCount >= this.options.maxFiles) {
-        return;
-      }
+      if (this.fileCount >= this.options.maxDownloads) return;
       
       const entries = await fs.readdir(dir, { withFileTypes: true });
-
       for (const entry of entries) {
-        // Check if we've reached the limit before processing each entry
-        if (this.fileCount >= this.options.maxFiles) {
-          Logger.info(`Maximum file limit of ${this.options.maxFiles} reached, stopping scan`);
+        if (this.fileCount >= this.options.maxDownloads) {
+          this.emit('log', 'info', `Maximum file limit of ${this.options.maxDownloads} reached, stopping scan.`);
           return;
         }
 
         const fullPath = path.join(dir, entry.name);
-
         if (entry.isDirectory()) {
           await this.scanDirectory(fullPath);
         } else if (entry.isFile()) {
-          // Track total files processed regardless of whether they're copied
           this.processedCount++;
+          this.emit('progress', { 
+            processed: this.processedCount, 
+            total: this.totalFilesToScan, 
+            currentFile: path.basename(fullPath) 
+          });
           
-          // Log progress for every 100 files processed
           if (this.processedCount % 100 === 0) {
-            Logger.info(`Processed ${this.processedCount} files, copied ${this.fileCount}/${this.options.maxFiles}...`);
+            this.emit('log', 'info', `Processed ${this.processedCount}/${this.totalFilesToScan} files, copied ${this.fileCount}/${this.options.maxDownloads}...`);
           }
-          
-          await this.processFile(fullPath, dir);
+          await this.processFile(fullPath);
         }
       }
     } catch (error) {
-      Logger.error(`Error scanning directory ${dir}:`, error);
-      throw error;
+      this.emit('log', 'error', `Error scanning directory ${dir}: ${error.message}`);
+      // Decide if this should emit('error') or just log
     }
   }
 
-  /**
-   * Process a single file
-   * @param {string} filePath - Path to the file
-   * @param {string} baseDir - Base directory for relative path calculation
-   */
-  async processFile(filePath, baseDir) {
+  async processFile(filePath) {
     try {
-      // Check file extension
       const ext = path.extname(filePath).toLowerCase().substring(1);
-      if (!this.options.fileTypes.includes(ext)) {
+      if (this.options.extensions && this.options.extensions.length > 0 && !this.options.extensions.includes(ext)) {
         this.skippedFiles++;
         return;
       }
 
-      // Check file size
       const stats = await fs.stat(filePath);
-      if (stats.size < this.options.minFileSize) {
+      if (this.options.minFileSize && stats.size < this.options.minFileSize) {
         this.skippedFiles++;
+        this.emit('log', 'debug', `Skipped (size): ${filePath} (${stats.size}b < ${this.options.minFileSize}b)`);
         return;
       }
 
-      // Check image dimensions if needed
       if (this.options.minWidth > 0 || this.options.minHeight > 0) {
         try {
           const metadata = await sharp(filePath).metadata();
           if ((this.options.minWidth > 0 && metadata.width < this.options.minWidth) ||
               (this.options.minHeight > 0 && metadata.height < this.options.minHeight)) {
             this.skippedFiles++;
+            this.emit('log', 'debug', `Skipped (dims): ${filePath} (${metadata.width}x${metadata.height})`);
             return;
           }
         } catch (error) {
-          Logger.warn(`Could not read image metadata for ${filePath}:`, error.message);
+          this.emit('log', 'warn', `Could not read image metadata for ${filePath}: ${error.message}`);
           this.errorFiles++;
           return;
         }
       }
 
-      // Deduplication: skip if hash seen
       const fileHash = await computeFileHash(filePath);
       if (this.seenHashes.has(fileHash)) {
-        Logger.info(`Skipping duplicate local file by hash: ${path.basename(filePath)}`);
+        this.emit('log', 'info', `Skipping duplicate local file by hash: ${path.basename(filePath)}`);
         this.skippedFiles++;
         return;
       }
-      this.seenHashes.add(fileHash);
+      
 
-      // Determine output path
       let outputPath;
+      const filename = path.basename(filePath);
       if (this.options.preserveStructure) {
         const relativePath = path.relative(this.options.sourceDir, path.dirname(filePath));
-        outputPath = path.join(this.options.outputDir, relativePath, path.basename(filePath));
+        outputPath = path.join(this.options.outputDir, relativePath, filename);
         await pathUtils.ensureDir(path.dirname(outputPath));
       } else {
-        const filename = path.basename(filePath);
         outputPath = path.join(this.options.outputDir, filename);
-        
-        // Handle filename conflicts
         let counter = 1;
         let newPath = outputPath;
         while (await pathUtils.pathExists(newPath)) {
-          const ext = path.extname(filename);
-          const name = path.basename(filename, ext);
-          newPath = path.join(path.dirname(outputPath), `${name}_${counter}${ext}`);
+          const fileExt = path.extname(filename);
+          const baseName = path.basename(filename, fileExt);
+          newPath = path.join(path.dirname(outputPath), `${baseName}_${counter}${fileExt}`);
           counter++;
         }
         outputPath = newPath;
       }
 
-      // Check if we've reached the max files limit before copying
-      if (this.fileCount >= this.options.maxFiles) {
-        Logger.debug(`Skipping file ${filePath} as max limit of ${this.options.maxFiles} has been reached`);
+      if (this.fileCount >= this.options.maxDownloads) {
+        this.emit('log', 'debug', `Skipping file ${filePath} as max limit of ${this.options.maxDownloads} has been reached during processing.`);
         return;
       }
       
-      // Copy the file
       await fs.copy(filePath, outputPath);
       this.fileCount++;
+      this.seenHashes.add(fileHash); // Add hash only after successful copy
+      this.emit('log', 'info', `Copied: ${filePath} to ${outputPath}`);
       
-      // Log progress
-      if (this.fileCount % 5 === 0 || this.fileCount === this.options.maxFiles) {
-        Logger.info(`Copied ${this.fileCount}/${this.options.maxFiles} files...`);
+      if (this.fileCount % 5 === 0 || this.fileCount === this.options.maxDownloads) {
+        this.emit('log', 'info', `Copied ${this.fileCount}/${this.options.maxDownloads} files...`);
       }
       
-      // If we've reached the limit, log it
-      if (this.fileCount >= this.options.maxFiles) {
-        Logger.info(`Maximum file limit of ${this.options.maxFiles} reached, stopping copy operations`);
+      if (this.fileCount >= this.options.maxDownloads) {
+        this.emit('log', 'info', `Maximum file limit of ${this.options.maxDownloads} reached.`);
       }
     } catch (error) {
-      Logger.error(`Error processing file ${filePath}:`, error);
+      this.emit('log', 'error', `Error processing file ${filePath}: ${error.message}`);
       this.errorFiles++;
     }
   }
 }
 
-export default LocalCrawler;
+module.exports = LocalCrawler;

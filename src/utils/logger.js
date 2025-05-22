@@ -1,5 +1,5 @@
-import chalk from 'chalk';
-import configManager from './config.js';
+const chalk = require('chalk');
+const configManager = require('./config.js'); // Assuming config.js is already CJS
 
 /**
  * Log levels
@@ -127,6 +127,10 @@ const initLogger = async () => {
 };
 
 // Auto-initialize logger
-initLogger().catch(console.error);
+// Consider if auto-init is desired or if it should be called explicitly by the app.
+// For Electron, it might be better to initialize after app ready or when config is loaded.
+// initLogger().catch(console.error); // Commenting out auto-init for now
 
-export default Logger;
+module.exports = Logger;
+// Expose initLogger if it needs to be called from outside, e.g. in main.js
+module.exports.initLogger = initLogger;

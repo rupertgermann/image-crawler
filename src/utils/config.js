@@ -1,13 +1,9 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { getPlatformInfo } from './platform.js';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const fs = require('fs-extra');
+const path = require('path');
+const { getPlatformInfo } = require('./platform.js');
 
 // Default configuration
-export const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG = {
   // General settings
   maxDownloads: 100,
   minWidth: 640,
@@ -57,23 +53,23 @@ export const DEFAULT_CONFIG = {
     ],
     google: { enabled: true, maxResults: 100 },
     pexels: { enabled: false, maxResults: 30 },
-    bing: { 
-      enabled: false, 
+    bing: {
+      enabled: false,
       maxResults: 30,
       maxScrollsBing: 15,
       scrollDelayBing: 2000,
-      lightboxDelayBing: 1500 
+      lightboxDelayBing: 1500
     },
     flickr: { enabled: false, maxResults: 30 },
-    duckduckgo: { 
-      enabled: false, 
+    duckduckgo: {
+      enabled: false,
       maxResults: 30,
       maxScrollsDDG: 15,
       loadMoreTimeoutDDG: 10000,
       scrollDelayDDG: 2000
     },
-    freeimages: { 
-      enabled: false, 
+    freeimages: {
+      enabled: false,
       maxResults: 30,
       maxScrollsFreeImages: 10,
       scrollDelayFreeImages: 2500
@@ -85,6 +81,9 @@ export const DEFAULT_CONFIG = {
 };
 
 class ConfigManager {
+  // Make DEFAULT_CONFIG accessible if needed, e.g., via a getter or by attaching to instance/prototype
+  static DEFAULT_CONFIG = DEFAULT_CONFIG; // Or this.DEFAULT_CONFIG = DEFAULT_CONFIG in constructor
+
   constructor() {
     this.config = null;
     this.configPath = path.join(process.cwd(), 'config.json');
@@ -212,10 +211,15 @@ class ConfigManager {
     if (!this.platform.isWindows) return [];
     
     try {
-      const { getWindowsDrives } = await import('./platform.js');
-      return await getWindowsDrives();
+      // Assuming platform.js is or will be CJS compatible
+      const { getWindowsDrives } = require('./platform.js'); 
+      return await getWindowsDrives(); // If getWindowsDrives is async
     } catch (error) {
       console.error('Error detecting Windows drives:', error);
+      // If getWindowsDrives was originally async due to dynamic import,
+      // and now it's a sync require, the await might not be needed
+      // or the function itself might need adjustment.
+      // For now, keeping await assuming getWindowsDrives itself is async.
       return ['C:\\'];
     }
   }
@@ -303,4 +307,6 @@ class ConfigManager {
 }
 
 // Export a singleton instance
-export default new ConfigManager();
+module.exports = new ConfigManager();
+// Also export DEFAULT_CONFIG if it's meant to be accessed directly from outside
+module.exports.DEFAULT_CONFIG = DEFAULT_CONFIG;

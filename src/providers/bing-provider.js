@@ -1,15 +1,15 @@
-import BaseProvider from './base-provider.js';
-import Logger from '../utils/logger.js';
+const BaseProvider = require('./base-provider.js');
+// const Logger = require('../utils/logger.js'); // Use this.emitLog
 
-export default class BingProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
+class BingProvider extends BaseProvider {
+  constructor(config, emitter) { // Added emitter
+    super(config, emitter); // Pass emitter to BaseProvider
     this.baseUrl = 'https://www.bing.com/images/search';
-    this.name = 'Bing'; // For logging
+    this.name = 'Bing';
   }
 
   async initialize() {
-    Logger.info('BingProvider initialized.');
+    this.emitLog('info', 'BingProvider initialized.');
   }
 
   /**
@@ -24,49 +24,46 @@ export default class BingProvider extends BaseProvider {
     const searchUrl = `${this.baseUrl}?q=${encodeURIComponent(query)}&form=HDRSC2&first=1&tsc=ImageBasicHover&safesearch=strict`;
     const imageUrls = new Set();
 
-    Logger.info(`[${this.name}] Searching for "${query}" at ${searchUrl}`);
+    this.emitLog('info', `Searching for "${query}" at ${searchUrl}`);
 
     try {
       await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: this.config.timeout || 60000 });
 
-      // Handle cookie consent if present (selectors might need adjustment)
       try {
         const consentSelectors = [
           '#bnp_btn_accept',
           'button[aria-label="Accept"]',
-          'button:has-text("Accept all")' 
+          'button:has-text("Accept all")'
         ];
         for (const selector of consentSelectors) {
-            const button = page.locator(selector);
-            if (await button.isVisible({ timeout: 2000 })) {
-                await button.click({ timeout: 3000 });
-                Logger.info(`[${this.name}] Clicked cookie consent button (${selector}).`);
-                await page.waitForLoadState('networkidle', { timeout: 5000 });
-                break;
-            }
+          const button = page.locator(selector);
+          if (await button.isVisible({ timeout: 2000 })) {
+            await button.click({ timeout: 3000 });
+            this.emitLog('info', `Clicked cookie consent button (${selector}).`);
+            await page.waitForLoadState('networkidle', { timeout: 5000 });
+            break;
+          }
         }
       } catch (e) {
-        Logger.debug(`[${this.name}] No cookie consent dialog found or error clicking: ${e.message}`);
+        this.emitLog('debug', `No cookie consent dialog found or error clicking: ${e.message}`);
       }
 
       let scrollCount = 0;
       const maxScrolls = this.config.maxScrollsBing || 15;
       let noNewImagesCount = 0;
-      const imageThumbnailSelector = 'a.iusc'; // Links surrounding image thumbnails
+      const imageThumbnailSelector = 'a.iusc';
 
       while (imageUrls.size < maxResults && scrollCount < maxScrolls) {
         const currentImageCount = imageUrls.size;
         const thumbnailLinks = await page.locator(imageThumbnailSelector).evaluateAll(nodes =>
           nodes.map(node => {
-            // Extract the murl which contains data about the image, including its URL
             const mAttribute = node.getAttribute('m');
             if (mAttribute) {
               try {
                 const mData = JSON.parse(mAttribute);
-                return mData.murl; // murl is often the direct preview image URL
-              } catch (e) { /* Logger.debug(`Failed to parse m attribute: ${mAttribute}`); */ }
+                return mData.murl;
+              } catch (e) { /* this.emitLog('debug', `Failed to parse m attribute: ${mAttribute}`); */ }
             }
-            // Fallback if murl is not found or parsing fails
             const imgElement = node.querySelector('img');
             return imgElement ? (imgElement.getAttribute('src') || imgElement.getAttribute('data-src')) : null;
           }).filter(url => url && url.startsWith('http'))
@@ -78,16 +75,14 @@ export default class BingProvider extends BaseProvider {
           }
         });
 
-        Logger.info(`[${this.name}] Scroll ${scrollCount + 1}/${maxScrolls}. Found ${imageUrls.size} unique image URLs (target: ${maxResults}).`);
+        this.emitLog('info', `Scroll ${scrollCount + 1}/${maxScrolls}. Found ${imageUrls.size} unique image URLs (target: ${maxResults}).`);
+        this.emitProgress({ foundCount: imageUrls.size, requestedCount: maxResults, message: `Scrolled ${scrollCount + 1} times.` });
+
         if (imageUrls.size >= maxResults) break;
 
         await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
         await page.waitForTimeout(this.config.scrollDelayBing || 2000);
         scrollCount++;
-
-        // Bing might have a 'See more images' button or similar if not infinite scroll
-        // const loadMoreButton = page.locator('selector-for-load-more');
-        // if (await loadMoreButton.isVisible()) { ... }
 
         if (imageUrls.size === currentImageCount) {
           noNewImagesCount++;
@@ -96,16 +91,15 @@ export default class BingProvider extends BaseProvider {
         }
 
         if (noNewImagesCount >= (this.config.noNewImagesRetriesBing || 3)) {
-          Logger.info(`[${this.name}] No new images found after ${noNewImagesCount} scrolls. Stopping scroll.`);
+          this.emitLog('info', `No new images found after ${noNewImagesCount} scrolls. Stopping scroll.`);
           break;
         }
       }
     } catch (error) {
-      Logger.error(`[${this.name}] Error fetching image URLs for "${query}": ${error.message}`);
-      Logger.debug(error.stack);
+      this.emitLog('error', `Error fetching image URLs for "${query}": ${error.message}`);
     }
 
-    Logger.info(`[${this.name}] Found a total of ${imageUrls.size} unique image preview URLs for "${query}".`);
+    this.emitLog('info', `Found a total of ${imageUrls.size} unique image preview URLs for "${query}".`);
     return Array.from(imageUrls).slice(0, maxResults);
   }
 
@@ -117,83 +111,65 @@ export default class BingProvider extends BaseProvider {
    * @returns {Promise<string|null>} - The full-size image URL, or null if not found.
    */
   async getFullSizeImage(page, previewImageUrl) {
-    Logger.debug(`[${this.name}] Attempting to get full-size image for: ${previewImageUrl}`);
+    this.emitLog('debug', `Attempting to get full-size image for: ${previewImageUrl}`);
     try {
-      // --- BEGIN ADDED OVERLAY HANDLING ---
       const overlayIframeSelector = 'iframe#OverlayIFrame';
       const overlayFrame = page.frameLocator(overlayIframeSelector);
 
       if (await page.locator(overlayIframeSelector).isVisible({ timeout: 2000 })) {
-        Logger.info(`[${this.name}] Overlay iframe detected. Attempting to find and click consent/close button within it.`);
-        // Common selectors for accept/close buttons within cookie/consent iframes
+        this.emitLog('info', `Overlay iframe detected. Attempting to find and click consent/close button within it.`);
         const consentButtonSelectors = [
-          'button[id*="accept" i]',
-          'button[aria-label*="accept" i]',
-          'button[aria-label*="agree" i]',
-          'button:has-text(/accept|agree|got it|confirm/i)',
-          'button[id*="close" i]',
-          'button[aria-label*="close" i]',
+          'button[id*="accept" i]', 'button[aria-label*="accept" i]', 'button[aria-label*="agree" i]',
+          'button:has-text(/accept|agree|got it|confirm/i)', 'button[id*="close" i]', 'button[aria-label*="close" i]',
         ];
-
         let closedOverlay = false;
         for (const btnSelector of consentButtonSelectors) {
           const buttonInFrame = overlayFrame.locator(btnSelector).first();
           if (await buttonInFrame.isVisible({ timeout: 500 })) {
-            Logger.info(`[${this.name}] Found potential consent button in iframe: ${btnSelector}. Clicking it.`);
+            this.emitLog('info', `Found potential consent button in iframe: ${btnSelector}. Clicking it.`);
             try {
               await buttonInFrame.click({ timeout: 3000 });
-              await page.waitForTimeout(1000); // Wait for overlay to potentially close
+              await page.waitForTimeout(1000);
               closedOverlay = true;
-              Logger.info(`[${this.name}] Clicked consent button in iframe.`);
-              break; 
+              this.emitLog('info', `Clicked consent button in iframe.`);
+              break;
             } catch (clickError) {
-              Logger.warn(`[${this.name}] Error clicking consent button ${btnSelector} in iframe: ${clickError.message}`);
+              this.emitLog('warn', `Error clicking consent button ${btnSelector} in iframe: ${clickError.message}`);
             }
           }
         }
         if (!closedOverlay) {
-            Logger.warn(`[${this.name}] Overlay iframe was present, but no known consent/close button was found or successfully clicked within it.`);
+          this.emitLog('warn', `Overlay iframe was present, but no known consent/close button was found or successfully clicked within it.`);
         }
       }
-      // --- END ADDED OVERLAY HANDLING ---
 
       const targetLinkLocator = page.locator(`a.iusc:has(img[src="${previewImageUrl}"]), a.iusc[m*="${previewImageUrl}"]`).first();
-      
-      if (!await targetLinkLocator.isVisible({timeout: 5000})) {
-        Logger.warn(`[${this.name}] Thumbnail link for ${previewImageUrl} not found or not visible. Returning preview URL.`);
+      if (!await targetLinkLocator.isVisible({ timeout: 5000 })) {
+        this.emitLog('warn', `Thumbnail link for ${previewImageUrl} not found or not visible. Returning preview URL.`);
         return previewImageUrl;
       }
 
       await targetLinkLocator.click({ timeout: 5000 });
-      // Wait for the lightbox/image viewer to appear and the main image to load
-      // Common selectors for Bing's lightbox image. These can change.
-      const lightboxImageSelectors = [
-        '#iv_stage img#mainImage', // Main image in the lightbox
-        '.ivg_img.loaded',         // Another possible selector for the loaded image in viewer
-        'img.nofocus'              // General image that might be the one in focus
-      ];
-
-      await page.waitForTimeout(this.config.lightboxDelayBing || 1500); // Give lightbox time to animate/load
+      const lightboxImageSelectors = ['#iv_stage img#mainImage', '.ivg_img.loaded', 'img.nofocus'];
+      await page.waitForTimeout(this.config.lightboxDelayBing || 1500);
 
       for (const selector of lightboxImageSelectors) {
         const imgElement = page.locator(selector).first();
-        if (await imgElement.isVisible({timeout: 2000})) {
+        if (await imgElement.isVisible({ timeout: 2000 })) {
           const fullSizeUrl = await imgElement.getAttribute('src');
           if (fullSizeUrl && fullSizeUrl.startsWith('http')) {
-            Logger.info(`[${this.name}] Extracted full-size image URL: ${fullSizeUrl}`);
-            // Click close button of lightbox to be ready for next one if applicable
-            // const closeButton = page.locator('#iv_close'); // Or other selector
-            // if (await closeButton.isVisible({timeout:500})) await closeButton.click();
+            this.emitLog('info', `Extracted full-size image URL: ${fullSizeUrl}`);
             return fullSizeUrl;
           }
         }
       }
-      Logger.warn(`[${this.name}] Could not find full-size image in lightbox for ${previewImageUrl}. Using preview URL.`);
-      return previewImageUrl; // Fallback
+      this.emitLog('warn', `Could not find full-size image in lightbox for ${previewImageUrl}. Using preview URL.`);
+      return previewImageUrl;
     } catch (error) {
-      Logger.error(`[${this.name}] Error getting full-size image for ${previewImageUrl}: ${error.message}`);
-      Logger.debug(error.stack);
-      return previewImageUrl; // Fallback to the preview URL on error
+      this.emitLog('error', `Error getting full-size image for ${previewImageUrl}: ${error.message}`);
+      return previewImageUrl;
     }
   }
 }
+
+module.exports = BingProvider;
