@@ -33,7 +33,7 @@ Image Crawler was created to provide a simple, yet powerful and unified interfac
 
 ## Installation
 
-1. Ensure you have Node.js 18+ installed
+1. Ensure you have Node.js 18+ installed (v18.17.0 or later recommended for full ES modules support)
 2. Install the package globally:
 
 ```bash
@@ -56,9 +56,36 @@ image-crawler
 
 ### Local Mode
 
-Scan a local directory for images. If no source is provided, you'll be prompted to select a folder:
+Scan a local directory for images. If no source is provided, you'll be prompted to select a folder. By default, Local Mode skips files already present in the output directory by comparing their content hashes.
 
-By default, Local Mode skips files already present in the output directory by comparing their content hashes.
+#### Basic Examples:
+
+```bash
+# Scan your Pictures folder and save to ./downloads
+npx image-crawler local --source ~/Pictures --output ./downloads
+
+# Find only high-resolution images (min 1920x1080)
+npx image-crawler local --min-width 1920 --min-height 1080 --output ./wallpapers
+
+# Find and organize by file type
+npx image-crawler local --source ~/Downloads --file-types jpg,png --output ./organized
+
+# Find large image files (minimum 1MB)
+npx image-crawler local --min-size 1MB --output ./large-images
+```
+
+#### Advanced Examples:
+
+```bash
+# Preserve the original directory structure
+npx image-crawler local --source ~/Projects --output ./backup --preserve-structure
+
+# Find images modified in the last 7 days (macOS/Linux)
+find ~/Pictures -type f -mtime -7 -name "*.jpg" -o -name "*.png" | xargs -I {} npx image-crawler local --source "{}" --output ./recent
+
+# Windows: Find and process images on multiple drives
+npx image-crawler local --select-drives --output ./all-drives-backup
+```
 
 ```bash
 
@@ -88,7 +115,46 @@ npx image-crawler local --min-width 800 --min-height 600 --max-files 100
 
 ### Web Mode
 
-Download images from the web. A search query is required:
+Download images from the web. A search query is required. The tool will automatically handle pagination and scroll through search results to find the best matches.
+
+#### Basic Search Examples:
+
+```bash
+# Simple search across all providers
+npx image-crawler web "mountain sunset" --max-downloads 20
+
+# Search specific providers
+npx image-crawler web "abstract art" --provider unsplash,pexels --max-downloads 30
+
+# High-resolution wallpapers
+npx image-crawler web "4k nature" --min-width 3840 --min-height 2160 --output ./wallpapers
+```
+
+#### Advanced Usage Examples:
+
+```bash
+# Download images for machine learning dataset
+npx image-crawler web "cat" --provider flickr,bing --max-downloads 500 --output ./dataset/cats
+
+# Create a mood board (mix of different styles)
+npx image-crawler web "minimalist interior design" --provider unsplash,pexels --max-downloads 50 --output ./mood-board
+
+# Download public domain images for a project
+npx image-crawler web "vintage patterns" --provider wikimedia --output ./public-domain
+```
+
+#### Provider-Specific Examples:
+
+```bash
+# Get trending photos from Unsplash
+npx image-crawler web "" --provider unsplash --output ./unsplash-trending
+
+# Search for Creative Commons images on Flickr
+npx image-crawler web "street photography" --provider flickr --output ./flickr-cc
+
+# Get high-quality nature wallpapers from Pexels
+npx image-crawler web "nature" --provider pexels --min-width 1920 --min-height 1080
+```
 
 ```bash
 # Basic usage (tries all enabled sources by default)
@@ -118,7 +184,22 @@ npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types j
 
 ### Interactive Mode
 
-Start in interactive mode for a guided experience:
+Start in interactive mode for a guided experience. This is perfect for new users or when you want to explore available options:
+
+```bash
+# Start the interactive mode
+npx image-crawler interactive
+
+# Example interactive session flow:
+# 1. Choose between Local or Web mode
+# 2. For Local: Select source folder, output location, and filters
+# 3. For Web: Enter search query, select providers, and set filters
+# 4. Review settings and confirm to start
+
+# You can also pre-select the mode:
+npx image-crawler interactive --mode web
+npx image-crawler interactive --mode local
+```
 
 ```bash
 npx image-crawler interactive
@@ -126,7 +207,68 @@ npx image-crawler interactive
 
 ## Configuration
 
-Configuration is stored in `config.json` in the current working directory. The file is automatically created on first run with default values.
+Configuration is stored in `config.json` in the current working directory. The file is automatically created on first run with default values. You can also create a custom config file and specify it with the `--config` option.
+
+### Example Configurations
+
+#### Basic Configuration
+```json
+{
+  "logLevel": "info",
+  "providers": {
+    "order": ["google", "unsplash", "pixabay"],
+    "google": {
+      "enabled": true,
+      "safeSearch": true
+    },
+    "unsplash": {
+      "enabled": true,
+      "apiKey": "your_unsplash_api_key_here"
+    }
+  },
+  "defaults": {
+    "outputDir": "./downloads",
+    "maxDownloads": 100,
+    "minWidth": 800,
+    "minHeight": 600
+  }
+}
+```
+
+#### Advanced Configuration
+```json
+{
+  "logLevel": "debug",
+  "providers": {
+    "order": ["google", "bing", "unsplash", "pixabay", "flickr"],
+    "google": {
+      "enabled": true,
+      "safeSearch": true,
+      "timeout": 60000
+    },
+    "flickr": {
+      "enabled": true,
+      "apiKey": "your_flickr_api_key",
+      "license": "4,5,6,9,10"  // Creative Commons licenses
+    }
+  },
+  "defaults": {
+    "outputDir": "~/Pictures/ImageCrawler",
+    "maxDownloads": 200,
+    "minWidth": 1024,
+    "minHeight": 768,
+    "fileTypes": ["jpg", "jpeg", "png", "webp"],
+    "preserveStructure": true
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
+```
+
+Use the config file:
+```bash
+# Use a specific config file
+npx image-crawler web "landscape" --config ./my-config.json
+```
 
 ### Environment Variables
 
@@ -145,9 +287,11 @@ USE_NATIVE_DIALOG=true DEBUG=image-crawler:* npx image-crawler local
 
 ## Development
 
+This project uses ES modules (import/export) instead of CommonJS (require/module.exports).
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/image-crawler.git
+   git clone https://github.com/rupertgermann/image-crawler.git
    cd image-crawler
    ```
 
@@ -176,6 +320,7 @@ npm test
 
 ## Troubleshooting
 
+- **ES Modules related errors**: Ensure you're using Node.js 18.17.0 or later. If you encounter `ERR_REQUIRE_ESM`, make sure all files use ES module syntax.
 - **No images found**: Try adjusting the search query or filters
 - **Browser timeout errors**: Increase the timeout with `--timeout 60000`
 - **Permission issues**: Ensure the output directory is writable
@@ -183,9 +328,16 @@ npm test
 
 ## Tech Stack
 
-- Node.js
+- Node.js (ES Modules)
 - Playwright (for Web Mode)
 - Various CLI helper libraries (e.g., yargs, chalk, inquirer)
+- Modern JavaScript (ES2022+ features)
+
+## Requirements
+
+- Node.js 18.17.0 or later
+- npm 9.0.0 or later
+- Playwright browsers (installed automatically)
 
 ## Contributing
 
