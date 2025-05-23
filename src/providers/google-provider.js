@@ -4,8 +4,8 @@ import BaseProvider from './base-provider.js';
 const GOOGLE_IMAGES_URL = 'https://www.google.com/imghp';
 
 export default class GoogleProvider extends BaseProvider {
-  constructor(config) {
-    super(config);
+  constructor(config, emitter) {
+    super(config, emitter);
     this.name = 'Google'; // For logging via events
   }
 

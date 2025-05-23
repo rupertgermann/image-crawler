@@ -1,12 +1,12 @@
 # Progress Summary - Image Crawler Project
 
-## Project Status: MATURE & STABLE ✅
+## Project Status: MATURE & STABLE 
 
 The Image Crawler project has reached a mature and stable state with all core features implemented, tested, and documented. The application successfully provides both local image scanning and web crawling capabilities across multiple platforms.
 
 ## Major Milestones Completed
 
-### 1. ES Modules Migration (2025-05-22) ✅
+### 1. ES Modules Migration (2025-05-22) 
 **Objective**: Modernize codebase to use ES modules throughout
 **Achievements**:
 - Complete migration from CommonJS to ES modules
@@ -21,7 +21,7 @@ The Image Crawler project has reached a mature and stable state with all core fe
 - Improved IDE support and tooling
 - Future-proof architecture
 
-### 2. Cross-Platform Compatibility (2025-05-20) ✅
+### 2. Cross-Platform Compatibility (2025-05-20) 
 **Objective**: Ensure robust operation across Windows, macOS, and Linux
 **Achievements**:
 - Dynamic default path generation using environment variables
@@ -36,7 +36,7 @@ The Image Crawler project has reached a mature and stable state with all core fe
 - Proper handling of Windows drive letters and UNC paths
 - Graceful degradation when native features unavailable
 
-### 3. Provider System Architecture (2025-05-17) ✅
+### 3. Provider System Architecture (2025-05-17) 
 **Objective**: Create extensible, maintainable provider ecosystem
 **Achievements**:
 - Unified provider interface with `fetchImageUrls` and `getFullSizeImage`
@@ -51,7 +51,7 @@ The Image Crawler project has reached a mature and stable state with all core fe
 - Consistent behavior across all providers
 - Maintainable and testable architecture
 
-### 4. Comprehensive Testing Infrastructure (2025-05-16) ✅
+### 4. Comprehensive Testing Infrastructure (2025-05-16) 
 **Objective**: Ensure code quality and reliability
 **Achievements**:
 - Jest-based testing with ES modules support
@@ -279,3 +279,37 @@ feat: Enable Electron main process to load ES Modules via dynamic import
 - Removed preload.cjs reference from main.cjs as the file was missing.
 - Ensures Electron app correctly utilizes ES Modules without modifying src codebase.
 ```
+
+---
+
+# Progress Update - Test Framework Migration (Jest to Playwright Test) - 2025-05-23
+
+## Implemented Features:
+
+1.  **Testing Framework Migration**:
+    *   Successfully initiated the migration from Jest to `@playwright/test` as the primary testing framework.
+    *   **Rationale**: To leverage tighter integration with the existing Playwright usage for browser automation, better ES Module support, and a unified testing experience.
+2.  **`package.json` Updates**:
+    *   Modified `scripts.test` to `npx playwright test`.
+    *   Removed Jest-specific scripts (e.g., `test:watch`, `test:coverage`).
+    *   Removed Jest-related dependencies (`jest`, `@types/jest`, `@babel/core`, `@babel/preset-env`, `eslint-plugin-jest`, etc.) from `devDependencies`.
+3.  **ESLint Configuration Update**:
+    *   Modified `.eslintrc.js` to remove Jest-specific environment settings (`env.jest: true`) and plugin extensions (`plugin:jest/recommended`).
+4.  **Test File Conversion**:
+    *   Successfully converted `tests/test-provider-logging.test.js` from Jest syntax to `@playwright/test` syntax.
+    *   Updated imports from `@jest/globals` to `@playwright/test`.
+    *   Adapted test hooks (e.g., `beforeAll` to `test.beforeAll`).
+
+## Encountered Errors & How We Fixed Them:
+
+1.  **Finding ESLint Configuration**:
+    *   **Issue**: Initial `find_by_name` calls failed to locate `.eslintrc.js` because it's a hidden file and the tool had difficulty with dotfile patterns.
+    *   **Fix**: Directly used `view_file` with the common filename `.eslintrc.js`, which successfully retrieved its content.
+2.  **Locating Test File**:
+    *   **Issue**: An attempt to `view_file` for `tests/test-provider-logging.js` failed as the file did not exist under that exact name.
+    *   **Fix**: Used `list_dir` on the `tests/` directory to identify the correct filename as `test-provider-logging.test.js`, which was then successfully viewed and edited.
+
+## Next Steps:
+- User to delete `jest.config.cjs`.
+- User to run `npm install`.
+- User to run `npm test` to execute tests with Playwright Test and verify the migration.

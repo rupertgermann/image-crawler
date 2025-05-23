@@ -7,7 +7,11 @@ class ProviderRegistry {
     this.activeProviders = [];
   }
 
-  async initialize() {
+  /**
+   * Initialize the provider registry
+   * @param {Object} crawlerInstance - The crawler instance to use as event emitter
+   */
+  async initialize(crawlerInstance) {
     // Dynamically load providers based on effective config (CLI overrides + file config)
     const effectiveProvidersConfig = configManager.getEffectiveProvidersConfig();
     const order = effectiveProvidersConfig.order || [];
@@ -16,12 +20,20 @@ class ProviderRegistry {
       if (effectiveProvidersConfig[providerName]?.enabled) {
         try {
           const ProviderClass = await this.loadProviderClass(providerName);
-          // Pass the specific provider's config part to its constructor
-          this.providers[providerName] = new ProviderClass(effectiveProvidersConfig[providerName]); 
+          // Pass both the provider's config and the crawler instance as emitter
+          this.providers[providerName] = new ProviderClass(
+            effectiveProvidersConfig[providerName],
+            crawlerInstance
+          );
           this.activeProviders.push(this.providers[providerName]);
         } catch (error) {
-            console.warn(`Failed to load provider ${providerName}: ${error.message}`);
-            // Optionally, re-throw or log more verbosely
+          const errorMsg = `Failed to load provider ${providerName}: ${error.message}`;
+          if (crawlerInstance && crawlerInstance.emit) {
+            crawlerInstance.emit('log', 'error', errorMsg);
+          } else {
+            console.warn(errorMsg);
+          }
+          // Optionally, re-throw or log more verbosely
         }
       }
     }
