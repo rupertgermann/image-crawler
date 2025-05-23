@@ -324,3 +324,26 @@ To remove the disruptive `alert` dialogs that appear upon the completion or stop
 
 ## Overall Assessment:
 The application now provides a less intrusive user experience during local scan operations by removing pop-up alerts. Users can still review scan status and summaries within the integrated log area.
+
+---
+
+# Bug Fix - Web Mode Start Button Not Functioning
+
+## Issue Description:
+After a previous fix for a `TypeError` related to missing checkboxes (`webSafeSearchCheckbox`, `webHeadlessCheckbox`), the web mode start button stopped initiating downloads, although no console errors were present. This was due to the accidental removal of the core logic for preparing options and calling `startWebDownload`.
+
+## Changes Implemented in `electron/renderer.js`:
+
+1.  **Restored Web Download Logic**:
+    *   The block of code within the `actionButton`'s click event listener, specifically for `selectedMode === 'web'`, has been fully restored. This includes:
+        *   Creation of the `options` object for `startWebDownload`, ensuring the null checks for `webSafeSearchCheckbox` and `webHeadlessCheckbox` (defaulting to `true` if elements are missing) are correctly integrated.
+        *   The `logMessage` call for the options.
+        *   The call to `setupWebCrawlerEventListeners`.
+        *   The `await window.electronAPI.startWebDownload(options);` call.
+        *   The associated `try...catch` block for error handling.
+
+2.  **Added Return After Alert**:
+    *   A `return;` statement was added after the `alert` that notifies the user if the 'Search query' or 'Output directory' is missing. This ensures the function exits immediately after the alert, preventing further execution with invalid inputs.
+
+## Overall Assessment:
+The web mode start button functionality has been fully restored. The fix ensures that the correct logic is executed when the button is clicked, while also maintaining resilience against missing optional UI elements (checkboxes).

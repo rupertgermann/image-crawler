@@ -113,9 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const webMinSizeInput = document.getElementById('webMinSize');
     const webFileTypesInput = document.getElementById('webFileTypes');
     const webProviderSelect = document.getElementById('webProvider');
-    const webSafeSearchCheckbox = document.getElementById('webSafeSearch');
-    const webHeadlessCheckbox = document.getElementById('webHeadless'); // May be null if not present in HTML
-    const webTimeoutInput = document.getElementById('webTimeout');
 
     async function loadAndApplyConfig() {
         if (!window.electronAPI || typeof window.electronAPI.getConfig !== 'function') {
@@ -157,10 +154,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if(webProviderSelect) webProviderSelect.value = config.provider || effectiveProvider || 'all'; 
             
-            if(webSafeSearchCheckbox) webSafeSearchCheckbox.checked = config.safeSearch !== undefined ? config.safeSearch : (defaultConfig.searchEngines?.google?.safeSearch !== undefined ? defaultConfig.searchEngines.google.safeSearch : true);
-            if(webHeadlessCheckbox) webHeadlessCheckbox.checked = config.headless !== undefined ? config.headless : (defaultConfig.headless !== undefined ? defaultConfig.headless : true); 
-            if(webTimeoutInput) webTimeoutInput.value = config.timeout !== undefined ? config.timeout : (defaultConfig.timeout !== undefined ? defaultConfig.timeout : 30000);
-
             logMessage('All relevant UI fields populated from configuration.');
 
         } catch (error) {
@@ -312,6 +305,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     alert('Search query and Output directory are required.');
                     actionButton.disabled = false;
                     stopButton.disabled = true;
+                    actionButton.disabled = false;
+                    stopButton.disabled = true;
+                    actionButton.textContent = originalButtonText;
+                    currentOperation = null;
+                    return; // Added return to exit after alert
+                }
+                const options = {
+                    query: query.trim(),
+                    outputDir,
+                    maxDownloads: parseInt(webMaxDownloadsInput.value) || 0,
+                    minWidth: parseInt(webMinWidthInput.value) || 0,
+                    minHeight: parseInt(webMinHeightInput.value) || 0,
+                    minFileSize: webMinSizeInput.value || '0KB',
+                    fileTypes: webFileTypesInput.value ? webFileTypesInput.value.split(',').map(ft => ft.trim()) : ['jpg', 'png'],
+                    provider: webProviderSelect.value || 'all',
+                    safeSearch: typeof webSafeSearchCheckbox !== 'undefined' && webSafeSearchCheckbox ? webSafeSearchCheckbox.checked : true,  // Safe default
+                    headless: typeof webHeadlessCheckbox !== 'undefined' && webHeadlessCheckbox ? webHeadlessCheckbox.checked : true,      // Safe default
+                    timeout: typeof webTimeoutInput !== 'undefined' && webTimeoutInput ? parseInt(webTimeoutInput.value) : 30000 // Safe default if element missing
+                };
+                logMessage(`Starting web download with options: ${JSON.stringify(options)}`);
+                try {
+                    setupWebCrawlerEventListeners(actionButton, originalButtonText);
+                    await window.electronAPI.startWebDownload(options);
+                } catch (error) {
+                    logMessage(`Error starting web download: ${error.message}`);
                     actionButton.disabled = false;
                     stopButton.disabled = true;
                     actionButton.textContent = originalButtonText;
