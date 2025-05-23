@@ -468,3 +468,24 @@ The `updateVisibleOptions` function in `electron/renderer.js` contained a condit
 
 ## Overall Assessment:
 The action button's label now correctly and consistently reflects the selected application mode, even if an operation is in progress and the button is disabled.
+
+---
+
+# Bug Fix - 'sender is not defined' in Stop IPC Handlers
+
+## Issue:
+When attempting to stop a local scan or web download, a `ReferenceError: sender is not defined` would occur in `electron/main.cjs`. This prevented the stop confirmation or error messages from being sent back to the renderer process correctly.
+
+## Root Cause:
+The `STOP_LOCAL_SCAN` and `STOP_WEB_DOWNLOAD` IPC handlers in `electron/main.cjs` were attempting to use `sender.send(...)` to communicate back to the renderer. However, the `sender` object is a property of the `event` object passed to the IPC handler (i.e., `event.sender`). The variable `sender` itself was not defined in the handlers' scope.
+
+## Fix Implemented:
+
+1.  **`electron/main.cjs`:**
+    *   In both `ipcMain.handle('STOP_LOCAL_SCAN', ...)` and `ipcMain.handle('STOP_WEB_DOWNLOAD', ...)`:
+        *   Changed all instances of `sender.send(...)` to `event.sender.send(...)`.
+        *   Ensured the `event` parameter was correctly included in the function signatures for these handlers.
+        *   Adjusted the payload of messages sent back for consistency (e.g., sending an object `{ message: '...' }`).
+
+## Overall Assessment:
+The error has been resolved. The stop functionality should now correctly communicate its status (success, error, or no active scan/download) back to the renderer process, allowing the UI to update accordingly.
