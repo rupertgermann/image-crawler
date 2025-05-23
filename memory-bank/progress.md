@@ -218,3 +218,35 @@ This update reflects the implementation of the image-crawler-implementation-plan
 *   Thorough end-to-end testing of all refactored image providers with various search queries and configurations.
 *   Update the main `README.md` to reflect any changes in provider configuration or usage, if necessary.
 *   General code cleanup and review.
+
+## Implemented Features
+- Successfully configured the Electron main process (`electron/main.cjs`) to correctly load and use ES Modules (`.js` files) from the `src` directory.
+- Implemented dynamic `import()` for `config.js`, `logger.js`, `local-crawler.js`, and `playwright-crawler.js` within `electron/main.cjs`.
+- Wrapped the main process logic in an `async` Immediately Invoked Function Expression (IIFE) to support `await` with dynamic imports.
+
+## Encountered Errors and Fixes
+1.  **Error:** `SyntaxError: Cannot use import statement outside a module` in `src/utils/config.cjs` and `src/utils/logger.cjs`.
+    -   **Root Cause:** These files were renamed to `.cjs` but still contained `import` statements, causing Node.js to treat them as CommonJS files attempting to use ES Module syntax.
+    -   **Fix:** Renamed `src/utils/config.cjs` back to `src/utils/config.js` and `src/utils/logger.cjs` back to `src/utils/logger.js`, restoring them to their original ES Module format.
+2.  **Error:** `ERR_REQUIRE_ESM` when `electron/main.cjs` attempted to `require` ES Modules like `local-crawler.js` and `playwright-crawler.js`.
+    -   **Root Cause:** CommonJS modules cannot directly `require` ES Modules.
+    -   **Fix:** Replaced `require()` calls with dynamic `await import()` for all ES Modules (`config.js`, `logger.js`, `local-crawler.js`, `playwright-crawler.js`) in `electron/main.cjs`.
+3.  **Error:** Initial plan to convert `src` files to `.cjs` was incorrect based on user's clarification.
+    -   **Root Cause:** Misinterpretation of user's intent to keep `src` files as ES Modules.
+    -   **Fix:** Revised the plan to use dynamic imports in `electron/main.cjs` instead of converting `src` files.
+4.  **Error:** `ENOENT: no such file or directory, open '/Users/rupertgermann/AI/image_crawler/electron/preload.cjs'`
+    -   **Root Cause:** The `preload.cjs` file was missing from the `electron` directory, but `electron/main.cjs` was still attempting to load it.
+    -   **Fix:** Removed the `preload` script reference from `electron/main.cjs` to allow the application to launch without this dependency. Further investigation may be needed to determine if a preload script is functionally required.
+
+## Commit Message
+```
+feat: Enable Electron main process to load ES Modules via dynamic import
+
+- Reverted config.cjs and logger.cjs to their original .js (ES Module) extensions.
+- Refactored electron/main.cjs to use dynamic await import() for all ES Modules
+  (config.js, logger.js, local-crawler.js, playwright-crawler.js) from the src directory.
+- Wrapped main process logic in an async IIFE to support asynchronous imports.
+- Added try-catch blocks for robust error handling during module loading.
+- Removed preload.cjs reference from main.cjs as the file was missing.
+- Ensures Electron app correctly utilizes ES Modules without modifying src codebase.
+```
