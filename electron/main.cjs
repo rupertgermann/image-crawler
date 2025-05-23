@@ -229,26 +229,24 @@ const fs = require('fs-extra');
         }
     });
 
-    ipcMain.handle('STOP_LOCAL_SCAN', async (event) => {
+    ipcMain.handle('STOP_LOCAL_SCAN', async (event) => { // Added 'event' parameter
+        Logger.info('Attempting to stop local scan...');
         if (activeLocalCrawler) {
             try {
-                Logger.info('Attempting to stop local scan...');
                 await activeLocalCrawler.stop();
                 Logger.info('Local scan stop method called.');
-                // The 'scan-stopped' event will be sent by the crawler itself or after stop() resolves
-                // For now, let's assume the crawler's stop method is effective and it will emit 'stopped' or similar
-                // or we can send it from here if stop() is guaranteed to terminate processing.
-                sender.send('scan-stopped'); // Send confirmation to renderer
-                activeLocalCrawler = null; // Clear reference after stop attempt
-                return { success: true, message: 'Local scan stop requested.' };
+                event.sender.send('scan-stopped', { message: 'Local scan stop requested successfully.' }); // Use event.sender
+                activeLocalCrawler = null; // Clear reference immediately after requesting stop
+                return { success: true, message: 'Stop requested.' };
             } catch (error) {
                 Logger.error('Error stopping local scan:', error);
-                sender.send('scan-error', error.message || 'Failed to stop local scan.');
-                return { success: false, message: error.message || 'Failed to stop local scan.' };
+                event.sender.send('scan-error', `Error stopping local scan: ${error.message}`); // Use event.sender
+                return { success: false, message: `Error: ${error.message}` };
             }
         } else {
             Logger.warn('No active local scan to stop.');
-            return { success: false, message: 'No active local scan to stop.' };
+            event.sender.send('scan-stopped', { message: 'No active local scan to stop.' }); // Use event.sender
+            return { success: false, message: 'No active scan.' };
         }
     });
 
@@ -293,23 +291,24 @@ const fs = require('fs-extra');
         }
     });
 
-    ipcMain.handle('STOP_WEB_DOWNLOAD', async (event) => {
+    ipcMain.handle('STOP_WEB_DOWNLOAD', async (event) => { // Added 'event' parameter
+        Logger.info('Attempting to stop web download...');
         if (activeWebCrawler) {
             try {
-                Logger.info('Attempting to stop web download...');
                 await activeWebCrawler.stop();
                 Logger.info('Web download stop method called.');
-                sender.send('web-stopped'); // Send confirmation to renderer
-                activeWebCrawler = null; // Clear reference after stop attempt
-                return { success: true, message: 'Web download stop requested.' };
+                event.sender.send('web-stopped', { message: 'Web download stop requested successfully.' }); // Use event.sender
+                activeWebCrawler = null; // Clear reference immediately after requesting stop
+                return { success: true, message: 'Stop requested.' };
             } catch (error) {
                 Logger.error('Error stopping web download:', error);
-                sender.send('web-error', error.message || 'Failed to stop web download.');
-                return { success: false, message: error.message || 'Failed to stop web download.' };
+                event.sender.send('web-error', `Error stopping web download: ${error.message}`); // Use event.sender
+                return { success: false, message: `Error: ${error.message}` };
             }
         } else {
             Logger.warn('No active web download to stop.');
-            return { success: false, message: 'No active web download to stop.' };
+            event.sender.send('web-stopped', { message: 'No active web download to stop.' }); // Use event.sender
+            return { success: false, message: 'No active download.' };
         }
     });
 

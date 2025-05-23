@@ -14,13 +14,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selectedMode === 'local') {
             localOptions.classList.add('active');
             webOptions.classList.remove('active');
-            if (actionButton && !stopButton.disabled) { // Only change text if no operation is running
+            if (actionButton) { // Check if actionButton exists
                 actionButton.textContent = 'Start Local Scan';
             }
         } else if (selectedMode === 'web') {
             localOptions.classList.remove('active');
             webOptions.classList.add('active');
-            if (actionButton && !stopButton.disabled) { // Only change text if no operation is running
+            if (actionButton) { // Check if actionButton exists
                 actionButton.textContent = 'Start Web Download';
             }
         }

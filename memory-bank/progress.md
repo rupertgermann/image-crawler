@@ -449,3 +449,22 @@ While the button element (`selectWebOutputDirBtn`) existed in `electron/index.ht
 
 ## Overall Assessment:
 The web mode output directory selector button is now functional, allowing users to choose a custom output location for their web downloads via the UI.
+
+---
+
+# Bug Fix - Action Button Label Not Updating with Mode Change During Active Operation
+
+## Issue:
+If an operation (local scan or web download) was started, and the user then switched the mode (e.g., from 'Web' to 'Local') while the operation was still in progress, the `actionButton`'s label would not update to reflect the new mode (e.g., it would still say 'Start Web Download' instead of 'Start Local Scan'). The button itself would be correctly disabled.
+
+## Root Cause:
+The `updateVisibleOptions` function in `electron/renderer.js` contained a condition (`&& !stopButton.disabled`) that prevented the `actionButton.textContent` from being updated if an operation was active (i.e., if the `stopButton` was enabled).
+
+## Fix Implemented:
+
+1.  **`electron/renderer.js`:**
+    *   In the `updateVisibleOptions` function, the condition `&& !stopButton.disabled` was removed from the logic that sets the `actionButton.textContent`.
+    *   Now, the `actionButton`'s label will always be updated to 'Start Local Scan' or 'Start Web Download' based on the selected mode, regardless of whether an operation is currently running.
+
+## Overall Assessment:
+The action button's label now correctly and consistently reflects the selected application mode, even if an operation is in progress and the button is disabled.
