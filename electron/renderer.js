@@ -253,24 +253,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 provider: webProviderSelect.value,
                 safeSearch: webSafeSearchCheckbox.checked,
                 headless: webHeadlessCheckbox.checked,
-                timeout: parseInt(webTimeoutInput.value) || null
+                timeout: parseInt(webTimeoutInput.value) || 30000
             };
             for (const key in options) { if (options[key] === null || Number.isNaN(options[key]) || (Array.isArray(options[key]) && !options[key].length)) { if (key !== 'safeSearch' && key !== 'headless' && (key !== 'maxDownloads' || options[key] !==0) ) delete options[key]; } }
-            logMessage(`Sending START_WEB_DOWNLOAD: ${JSON.stringify(options)}`);
+
+            logMessage('Starting web download...');
+            startWebDownloadBtn.disabled = true;
+            const originalButtonText = startWebDownloadBtn.textContent;
+            startWebDownloadBtn.textContent = 'Downloading...';
+
+            setupWebCrawlerEventListeners(startWebDownloadBtn, originalButtonText);
+
             try {
-                startWebDownloadBtn.disabled = true; startWebDownloadBtn.textContent = 'Downloading...';
-                if (window.electronAPI.removeAllWebCrawlerListeners) window.electronAPI.removeAllWebCrawlerListeners();
-                setupWebCrawlerEventListeners(startWebDownloadBtn, 'Start Web Download');
                 const result = await window.electronAPI.startWebDownload(options);
-                logMessage(`Main process response (web download): ${result.message}`);
-                 if (!result.success && startWebDownloadBtn.disabled) { 
-                    alert(`Web download failed to start: ${result.message}`);
-                    startWebDownloadBtn.disabled = false; startWebDownloadBtn.textContent = 'Start Web Download';
+                if (result.success) {
+                    logMessage('Main process response (web download): Download initiated successfully.');
+                } else {
+                    logMessage(`Main process response (web download): Failed to start download - ${result.message || 'Unknown error'}`);
                 }
             } catch (error) {
-                logMessage(`Error invoking startWebDownload: ${error.message || error}`);
-                alert(`Error starting web download: ${error.message || error}`);
-                startWebDownloadBtn.disabled = false; startWebDownloadBtn.textContent = 'Start Web Download';
+                logMessage(`Error starting web download: ${error.message}`);
+                startWebDownloadBtn.disabled = false;
+                startWebDownloadBtn.textContent = originalButtonText;
             }
         });
     }
@@ -350,13 +354,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (window.electronAPI.onWebCrawlerLog) {
                 window.electronAPI.onWebCrawlerLog((data) => {
-                    logMessage(`Web Download Progress: ${data.downloaded}/${data.total} files`);
+                    logMessage(`Web Download Progress: ${data.downloadedCount}/${data.requestedCount} files`);
                     // Update UI with progress if needed
                 });
             }
             if (window.electronAPI.onWebCrawlerComplete) {
                 window.electronAPI.onWebCrawlerComplete((data) => {
-                    logMessage(`Web Download Complete: ${data.message}`);
+                    const summaryMessage = `Web Download Complete: Downloaded ${data.downloaded}, Skipped ${data.skipped}, Errors ${data.errors}.`;
+                    logMessage(summaryMessage);
                     buttonElement.disabled = false;
                     buttonElement.textContent = originalButtonText;
                 });

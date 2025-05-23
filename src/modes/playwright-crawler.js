@@ -117,7 +117,7 @@ class PlaywrightCrawler extends EventEmitter {
         const providerMaxResults = Math.min(remainingForGlobalLimit, providerInstance.config.maxResults || remainingForGlobalLimit);
 
         this.emit('log', 'info', `Attempting to download up to ${providerMaxResults} images from ${providerName}...`);
-        this.emit('progress', { provider: providerName, message: `Starting provider ${providerName}`});
+        this.emit('progress', { provider: providerName, message: `Starting provider ${providerName}`, downloadedCount: this.downloadedCount, requestedCount: this.totalDownloadLimit });
         
         let providerDownloaded = 0;
         let providerErrors = 0;
