@@ -202,21 +202,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 preserveStructure: localPreserveStructureCheckbox.checked
             };
             for (const key in options) { if (options[key] === null || Number.isNaN(options[key]) || (Array.isArray(options[key]) && !options[key].length)) { if (key !== 'preserveStructure' && key !== 'maxDownloads') delete options[key]; } }
-            logMessage(`Sending START_LOCAL_SCAN: ${JSON.stringify(options)}`);
+            logMessage('Starting local scan...');
+            startLocalScanBtn.disabled = true;
+            const originalButtonText = startLocalScanBtn.textContent;
+            startLocalScanBtn.textContent = 'Scanning...';
+
+            setupLocalCrawlerEventListeners(startLocalScanBtn, originalButtonText);
+
             try {
-                startLocalScanBtn.disabled = true; startLocalScanBtn.textContent = 'Scanning...';
-                if (window.electronAPI.removeAllLocalCrawlerListeners) window.electronAPI.removeAllLocalCrawlerListeners();
-                setupLocalCrawlerEventListeners(startLocalScanBtn, 'Start Local Scan');
                 const result = await window.electronAPI.startLocalScan(options);
-                logMessage(`Main process response (local scan): ${result.message}`);
-                if (!result.success && startLocalScanBtn.disabled) { 
-                    alert(`Local scan failed to start: ${result.message}`);
-                    startLocalScanBtn.disabled = false; startLocalScanBtn.textContent = 'Start Local Scan';
+                if (result.success) {
+                    logMessage('Main process response (local scan): Scan initiated successfully.');
+                } else {
+                    logMessage(`Main process response (local scan): Failed to start scan - ${result.message || 'Unknown error'}`);
                 }
             } catch (error) {
-                logMessage(`Error invoking startLocalScan: ${error.message || error}`);
-                alert(`Error starting local scan: ${error.message || error}`);
-                startLocalScanBtn.disabled = false; startLocalScanBtn.textContent = 'Start Local Scan';
+                logMessage(`Error starting local scan: ${error.message}`);
+                startLocalScanBtn.disabled = false;
+                startLocalScanBtn.textContent = originalButtonText;
             }
         });
     }
@@ -322,7 +325,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (window.electronAPI.onLocalCrawlerComplete) {
                 window.electronAPI.onLocalCrawlerComplete((data) => {
-                    logMessage(`Local Scan Complete: ${data.message}`);
+                    const summaryMessage = `Local Scan Complete: Found ${data.foundImages} images, Copied ${data.copiedImages}, Skipped ${data.skippedFiles}, Errors ${data.errorCount}.`;
+                    logMessage(summaryMessage);
                     buttonElement.disabled = false;
                     buttonElement.textContent = originalButtonText;
                 });
