@@ -309,47 +309,64 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper Functions for Event Listeners
     function setupLocalCrawlerEventListeners(buttonElement, originalButtonText) {
-        if (window.electronAPI && window.electronAPI.onLocalCrawlerLog) {
-            window.electronAPI.onLocalCrawlerLog(({ level, message }) => logMessage(`[LOCAL SCAN - ${level.toUpperCase()}] ${message}`));
-            window.electronAPI.onLocalCrawlerProgress((data) => logMessage(`[LOCAL SCAN - PROGRESS] Processed ${data.processed}/${data.total || '?'}. Current: ${data.currentFile || 'N/A'}`));
-            window.electronAPI.onLocalCrawlerError(({ message, details }) => {
-                logMessage(`[LOCAL SCAN - ERROR] ${message}${details ? ' Details: ' + details : ''}`);
-                alert(`Local Scan Error: ${message}`);
-                if (buttonElement) { buttonElement.disabled = false; buttonElement.textContent = originalButtonText; }
-            });
-            window.electronAPI.onLocalCrawlerComplete((summary) => {
-                logMessage(`[LOCAL SCAN - COMPLETE] ${JSON.stringify(summary)}`);
-                alert('Local scan completed!');
-                if (buttonElement) { buttonElement.disabled = false; buttonElement.textContent = originalButtonText; }
-            });
+        if (window.electronAPI) {
+            // Remove previous listeners to prevent duplicates
+            if (window.electronAPI.removeAllLocalCrawlerListeners) {
+                window.electronAPI.removeAllLocalCrawlerListeners();
+            }
+            if (window.electronAPI.onLocalCrawlerLog) {
+                window.electronAPI.onLocalCrawlerLog((data) => {
+                    logMessage(`Local Scan Progress: ${data.processed}/${data.total} files`);
+                    // Update UI with progress if needed
+                });
+            }
+            if (window.electronAPI.onLocalCrawlerComplete) {
+                window.electronAPI.onLocalCrawlerComplete((data) => {
+                    logMessage(`Local Scan Complete: ${data.message}`);
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalButtonText;
+                });
+            }
+            if (window.electronAPI.onLocalCrawlerError) {
+                window.electronAPI.onLocalCrawlerError((error) => {
+                    logMessage(`Local Scan Error: ${error.message}`);
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalButtonText;
+                    alert(`Local scan error: ${error.message}`);
+                });
+            }
         }
     }
 
     function setupWebCrawlerEventListeners(buttonElement, originalButtonText) {
-        if (window.electronAPI && window.electronAPI.onWebCrawlerLog) {
-            window.electronAPI.onWebCrawlerLog(({ level, message }) => logMessage(`[WEB CRAWL - ${level.toUpperCase()}] ${message}`));
-            window.electronAPI.onWebCrawlerProgress((data) => {
-                let msg = `[WEB CRAWL - PROGRESS] Provider: ${data.provider || 'N/A'}`;
-                if (data.foundCount !== undefined) msg += `, Found: ${data.foundCount}`; 
-                if (data.downloadedCount !== undefined) msg += `, Downloaded: ${data.downloadedCount}/${data.requestedCount || data.foundCount || '?'}`; 
-                if (data.currentUrl) msg += `, Current: ${data.currentUrl}`;
-                if (data.message) msg += ` (${data.message})`; 
-                logMessage(msg);
-            });
-            window.electronAPI.onWebCrawlerError(({ message, details }) => {
-                logMessage(`[WEB CRAWL - ERROR] ${message}${details ? ' Details: ' + details : ''}`);
-                alert(`Web Crawler Error: ${message}`);
-                 if (buttonElement) { buttonElement.disabled = false; buttonElement.textContent = originalButtonText; }
-            });
-            window.electronAPI.onWebCrawlerComplete((summary) => {
-                logMessage(`[WEB CRAWL - COMPLETE] Downloaded: ${summary.downloaded}, Skipped: ${summary.skipped}, Errors: ${summary.errors}.`);
-                if(summary.providerSummaries && summary.providerSummaries.length > 0){
-                    summary.providerSummaries.forEach(s => logMessage(`  Provider ${s.provider}: ${s.downloadedCount} downloaded, ${s.errorCount} errors.`));
-                }
-                alert('Web download completed!');
-                if (buttonElement) { buttonElement.disabled = false; buttonElement.textContent = originalButtonText; }
-            });
+        if (window.electronAPI) {
+            // Remove previous listeners to prevent duplicates
+            if (window.electronAPI.removeAllWebCrawlerListeners) {
+                window.electronAPI.removeAllWebCrawlerListeners();
+            }
+            if (window.electronAPI.onWebCrawlerLog) {
+                window.electronAPI.onWebCrawlerLog((data) => {
+                    logMessage(`Web Download Progress: ${data.downloaded}/${data.total} files`);
+                    // Update UI with progress if needed
+                });
+            }
+            if (window.electronAPI.onWebCrawlerComplete) {
+                window.electronAPI.onWebCrawlerComplete((data) => {
+                    logMessage(`Web Download Complete: ${data.message}`);
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalButtonText;
+                });
+            }
+            if (window.electronAPI.onWebCrawlerError) {
+                window.electronAPI.onWebCrawlerError((error) => {
+                    logMessage(`Web Download Error: ${error.message}`);
+                    buttonElement.disabled = false;
+                    buttonElement.textContent = originalButtonText;
+                    alert(`Web download error: ${error.message}`);
+                });
+            }
         }
     }
+
     logMessage('UI is ready.');
 });
