@@ -403,7 +403,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         window.electronAPI.onWebComplete((summary) => {
             logMessage(`Web download complete: ${summary}`);
-            alert(`Web download finished!\nAttempted: ${summary.attempted}\nSuccessful: ${summary.successful}\nFailed: ${summary.failed}`);
             buttonElement.disabled = false;
             stopButton.disabled = true;
             buttonElement.textContent = originalButtonText;
@@ -463,6 +462,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    // --- Event Listener for Clear UI Logs Button ---
+    const clearUiLogsBtn = document.getElementById('clearUiLogsBtn');
+    if (clearUiLogsBtn && logArea) { // logArea should already be defined
+        clearUiLogsBtn.addEventListener('click', () => {
+            logArea.innerHTML = ''; // Clear the log display
+            logMessage('UI logs cleared.'); // Log a confirmation message
+        });
+    }
+
     // --- End of Save UI Logs Button Listener ---
 
     logMessage('UI is ready.');
