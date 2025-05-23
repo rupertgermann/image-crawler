@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const webFileTypesInput = document.getElementById('webFileTypes');
     const webProviderSelect = document.getElementById('webProvider');
     const webSafeSearchCheckbox = document.getElementById('webSafeSearch');
-    const webHeadlessCheckbox = document.getElementById('webHeadless');
+    const webHeadlessCheckbox = document.getElementById('webHeadless'); // May be null if not present in HTML
     const webTimeoutInput = document.getElementById('webTimeout');
 
     async function loadAndApplyConfig() {
@@ -312,29 +312,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     alert('Search query and Output directory are required.');
                     actionButton.disabled = false;
                     stopButton.disabled = true;
-                    actionButton.textContent = originalButtonText;
-                    currentOperation = null;
-                    return;
-                }
-                const options = {
-                    query: query.trim(),
-                    outputDir,
-                    maxDownloads: parseInt(webMaxDownloadsInput.value) || 0,
-                    minWidth: parseInt(webMinWidthInput.value) || 0,
-                    minHeight: parseInt(webMinHeightInput.value) || 0,
-                    minFileSize: webMinSizeInput.value || '0KB',
-                    fileTypes: webFileTypesInput.value ? webFileTypesInput.value.split(',').map(ft => ft.trim()) : ['jpg', 'png'],
-                    provider: webProviderSelect.value || 'all',
-                    safeSearch: webSafeSearchCheckbox.checked,
-                    headless: webHeadlessCheckbox.checked,
-                    timeout: parseInt(webTimeoutInput.value) || 30000
-                };
-                logMessage(`Starting web download with options: ${JSON.stringify(options)}`);
-                try {
-                    setupWebCrawlerEventListeners(actionButton, originalButtonText);
-                    await window.electronAPI.startWebDownload(options);
-                } catch (error) {
-                    logMessage(`Error starting web download: ${error.message}`);
                     actionButton.disabled = false;
                     stopButton.disabled = true;
                     actionButton.textContent = originalButtonText;
