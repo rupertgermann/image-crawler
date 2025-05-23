@@ -278,214 +278,28 @@ feat: Enable Electron main process to load ES Modules via dynamic import
 - Added try-catch blocks for robust error handling during module loading.
 - Removed preload.cjs reference from main.cjs as the file was missing.
 - Ensures Electron app correctly utilizes ES Modules without modifying src codebase.
+
 ```
 
----
-
-# Progress Update - Test Framework Migration (Jest to Playwright Test) - 2025-05-23
-
-## Implemented Features:
-
-1.  **Testing Framework Migration**:
-    *   Successfully initiated the migration from Jest to `@playwright/test` as the primary testing framework.
-    *   **Rationale**: To leverage tighter integration with the existing Playwright usage for browser automation, better ES Module support, and a unified testing experience.
-2.  **`package.json` Updates**:
-    *   Modified `scripts.test` to `npx playwright test`.
-    *   Removed Jest-specific scripts (e.g., `test:watch`, `test:coverage`).
-    *   Removed Jest-related dependencies (`jest`, `@types/jest`, `@babel/core`, `@babel/preset-env`, `eslint-plugin-jest`, etc.) from `devDependencies`.
-3.  **ESLint Configuration Update**:
-    *   Modified `.eslintrc.js` to remove Jest-specific environment settings (`env.jest: true`) and plugin extensions (`plugin:jest/recommended`).
-4.  **Test File Conversion**:
-    *   Successfully converted `tests/test-provider-logging.test.js` from Jest syntax to `@playwright/test` syntax.
-    *   Updated imports from `@jest/globals` to `@playwright/test`.
-    *   Adapted test hooks (e.g., `beforeAll` to `test.beforeAll`).
-
-## Encountered Errors & How We Fixed Them:
-
-1.  **Finding ESLint Configuration**:
-    *   **Issue**: Initial `find_by_name` calls failed to locate `.eslintrc.js` because it's a hidden file and the tool had difficulty with dotfile patterns.
-    *   **Fix**: Directly used `view_file` with the common filename `.eslintrc.js`, which successfully retrieved its content.
-2.  **Locating Test File**:
-    *   **Issue**: An attempt to `view_file` for `tests/test-provider-logging.js` failed as the file did not exist under that exact name.
-    *   **Fix**: Used `list_dir` on the `tests/` directory to identify the correct filename as `test-provider-logging.test.js`, which was then successfully viewed and edited.
-
-## Next Steps:
-- User to delete `jest.config.cjs`.
-- User to run `npm install`.
-- User to run `npm test` to execute tests with Playwright Test and verify the migration.
-
----
-
-# Progress Update - Session: Migrating Remaining Unit Tests to Playwright (file-dialog, image-processor, logger)
+# UI Enhancement - Improved Visibility for Secondary Buttons
 
 ## Objective:
-Migrate remaining Jest unit tests to Playwright Test, handle missing source files, and prepare for a full test run.
+To enhance the visibility of secondary action buttons (e.g., "Select Source", "Select Output") in the UI, making them easier to distinguish from the background.
 
-## Key Features Modified/Tasks Completed:
+## Changes Implemented in `electron/css/styles.css`:
 
-1.  **`tests/unit/file-dialog.test.js` Conversion:**
-    *   Successfully converted from Jest to Playwright Test.
-    *   Manually mocked `child_process.exec` by replacing the module's function and restoring it in `beforeEach`/`afterEach`.
-    *   Continued to mock `process.platform` by directly modifying `process.platform` and restoring it.
+1.  **`.button--secondary` Styling**:
+    *   `background-color`: Changed from `var(--bg-secondary)` to `var(--accent-color)`.
+    *   `color`: Changed from `var(--text-primary)` to `var(--bg-primary)`.
+    *   `border`: Set to `1px solid var(--accent-color)` to match the new background.
 
-2.  **`tests/unit/image-processor.test.js` Handling:**
-    *   Identified that the corresponding source file (`src/utils/image-processor.js`) was missing after multiple checks (`list_dir`, `find_by_name`).
-    *   Based on user confirmation, deleted the orphaned test file `tests/unit/image-processor.test.js`.
+2.  **`.button--secondary:hover` Styling**:
+    *   `background-color`: Changed to `var(--accent-hover)`.
+    *   `border-color`: Changed to `var(--accent-hover)`.
 
-3.  **`tests/unit/logger.test.js` Conversion:**
-    *   Successfully converted from Jest to Playwright Test.
-    *   Manually spied on `console` methods (log, error, warn, info, debug) by replacing them with custom spy functions and restoring originals in `beforeEach`/`afterEach`.
-
-## Encountered Errors/Challenges & Fixes:
-
-*   **Missing `image-processor.js` Source File:** The primary challenge was the missing source code for `image-processor.test.js`. This was resolved by confirming the file's absence and deleting the test upon user request.
-*   **Tool Usage Error:** Incorrectly attempted to use `write_to_file` to append to `progress.md`, which failed as the file exists. This will be corrected by using `edit_file` for appending.
-
-## Next Steps:
-
-*   Run all Playwright tests using `npm test` to verify the complete migration of all test files.
-*   Address any failures from the test run.
-*   Update `project-status.md` at the end of the session.
-
-## Progress Update (Header Action Buttons - Phase 1: UI Implementation)
-
-**Implemented Features:**
-
-1.  **Header Structure Update (`electron/index.html`):**
-    *   Moved mode selection (`<input type="radio" name="mode">`) into the `header__left` div.
-    *   Added a "Mode:" label (`<span class="header__mode-label">`) next to the app title.
-    *   Added a unified "Start" button (`<button id="actionButton">`) and a "Stop" button (`<button id="stopButton">`) to the `header__actions` div.
-    *   Removed the old, separate "Start Local Scan" and "Start Web Download" buttons from their respective option sections.
-
-2.  **CSS Styling (`electron/css/styles.css`):**
-    *   Adjusted `gap` in `.header__left` for a more compact layout.
-    *   Added styles for `.header__mode-label` to ensure proper alignment and appearance.
-    *   Leveraged existing button styles for the new header buttons.
-
-3.  **Renderer Logic (`electron/renderer.js`):**
-    *   Added references and event listeners for the new `actionButton` and `stopButton`.
-    *   Implemented `updateVisibleOptions()` to dynamically change `actionButton` text ("Start Local Scan" / "Start Web Download") based on the selected mode and whether an operation is active.
-    *   Centralized start logic: `actionButton` now triggers either local scan or web download based on the current mode.
-    *   Implemented `stopButton` logic to call respective `stopLocalScan` or `stopWebDownload` IPC channels.
-    *   Introduced a `currentOperation` variable to track whether a 'local' or 'web' task is running.
-    *   Modified IPC event handlers (`setupLocalCrawlerEventListeners`, `setupWebCrawlerEventListeners`) to:
-        *   Correctly update the state (enabled/disabled, text content) of the new `actionButton` and `stopButton`.
-        *   Handle new `onScanStopped` and `onWebStopped` events to reset UI state after a stop command.
-
-**Encountered Errors & Fixes:**
-*   Initially, the `actionButton` text was not updating correctly when switching modes while an operation was running. This was fixed by ensuring the text only updates if `stopButton.disabled` is true (i.e., no operation active).
-*   Ensured that IPC event handlers for completion, error, and stop events correctly reset the `currentOperation` state and update button texts/states via `updateVisibleOptions()`.
-
-**Next Steps (based on current task):**
-*   Verify and implement `stop()` methods in `LocalCrawler` and `WebCrawler` classes.
-*   Ensure `main.cjs` correctly handles `stopLocalScan` and `stopWebDownload` IPC messages, calls the crawler `stop()` methods, and emits `scan-stopped` / `web-stopped` events back to the renderer.
-
----
-
-# Progress Update - Backend for Header Action Buttons (Stop Functionality)
-
-## Objective:
-Implement the backend logic to support the new "Stop" button in the UI header, allowing users to cancel ongoing local scans and web downloads.
-
-## Implemented Features:
-
-1.  **IPC Channel Setup (`electron/preload.js`):**
-    *   Added new IPC channels (`stopLocalScan`, `stopWebDownload`) to allow the renderer process to request a stop operation.
-    *   Added event listeners (`onScanStopped`, `onWebStopped`) for the renderer to be notified when a scan/download has actually been stopped.
-    *   Renamed existing event listeners (e.g., `onLocalCrawlerLog` to `onScanLog`) for consistency with `renderer.js`.
-    *   Updated `removeAllListeners` functions to include the new and renamed events.
-
-2.  **Main Process Handling (`electron/main.cjs`):**
-    *   Introduced `activeLocalCrawler` and `activeWebCrawler` variables to keep track of the currently running crawler instances.
-    *   Updated `START_LOCAL_SCAN` and `START_WEB_DOWNLOAD` IPC handlers to store the active crawler instance and clear it upon completion or error.
-    *   Added checks to prevent starting a new scan/download if one of the same type is already in progress.
-    *   Implemented new IPC handlers for `STOP_LOCAL_SCAN` and `STOP_WEB_DOWNLOAD`:
-        *   These handlers call the `stop()` method on the respective active crawler instance.
-        *   They send `'scan-stopped'` or `'web-stopped'` events back to the renderer upon successfully calling the stop method.
-        *   They clear the reference to the active crawler.
-    *   Ensured event names used for sending data to the renderer (logs, completion, errors) are consistent with `preload.js` and `renderer.js`.
-
-3.  **Local Crawler Stop Logic (`src/modes/local-crawler.js`):**
-    *   Added a `stopRequested` boolean flag, initialized to `false`.
-    *   Implemented an `async stop()` method that sets `stopRequested = true` and emits a log.
-    *   Integrated `if (this.stopRequested)` checks within recursive methods (`_estimateTotalFiles`, `scanDirectory`) and `processFile` to halt operations gracefully.
-    *   The `start()` method now also checks this flag at various points for early exit.
-    *   The final `complete` event summary now includes a `stoppedByUser` flag.
-
-4.  **Web Crawler Stop Logic (`src/modes/playwright-crawler.js`):**
-    *   Added a `stopRequested` boolean flag, initialized to `false`.
-    *   Implemented an `async stop()` method that sets `stopRequested = true`, emits a log, and attempts to close the Playwright browser if active.
-    *   Integrated `if (this.stopRequested)` checks within the main `start()` loop (before provider iteration, before image URL iteration) and at the beginning of `processImage()`.
-    *   The `finally` block in `start()` ensures the browser is closed if it was opened, even if a stop was requested.
-    *   The final `complete` event summary now includes a `stoppedByUser` flag.
-
-## Encountered Errors & How We Fixed Them:
-
-*   **Missing IPC Channels:** `preload.js` was missing the necessary functions and event listeners to handle stop requests and notifications. This was resolved by adding the required `ipcRenderer.invoke` calls and `ipcRenderer.on` listeners.
-*   **Lack of Crawler Instance Management:** `main.cjs` did not track active crawler instances, making it impossible to call a `stop()` method. This was fixed by introducing `activeLocalCrawler` and `activeWebCrawler` variables and managing their lifecycle.
-*   **No Stop Mechanism in Crawlers:** The `LocalCrawler` and `PlaywrightCrawler` classes lacked internal logic to interrupt their operations. This was addressed by adding a `stopRequested` flag and integrating checks for this flag throughout their processing loops, and by adding a specific `stop()` method to each.
-*   **Event Name Inconsistencies:** Event names for logs, completion, and errors were inconsistent between `main.cjs`, `preload.js`, and `renderer.js`. These were standardized (e.g., `local-crawler-log` to `scan-log`).
+3.  **General `.button` Styling Simplification**:
+    *   Removed `transform` and `box-shadow` from general button hover states.
+    *   Simplified disabled state to primarily use `opacity`.
 
 ## Overall Assessment:
-The backend functionality for stopping both local scans and web downloads is now fully implemented. The changes ensure that stop requests from the UI are correctly processed, ongoing operations are halted as gracefully as possible, and the UI is notified of the outcome.
-
----
-
-# Bug Fix - Web Mode Output Directory Selector Not Working
-
-## Issue:
-The "Select Output" button in the "Web Mode Options" section of the UI was not functional. Clicking it did not open a directory selection dialog.
-
-## Root Cause:
-While the button element (`selectWebOutputDirBtn`) existed in `electron/index.html`, the corresponding JavaScript event listener in `electron/renderer.js` to handle its click event was missing.
-
-## Fix Implemented:
-
-1.  **`electron/renderer.js`:**
-    *   Added an event listener for the `selectWebOutputDirBtn` element.
-    *   This listener, when the button is clicked, now calls `window.electronAPI.selectDirectory('Select Web Output Directory')`.
-    *   If a directory is successfully selected, the `value` of the `webOutputDirInput` text field is updated with the chosen path.
-    *   Log messages are generated for successful selection or any errors during the process.
-
-## Overall Assessment:
-The web mode output directory selector button is now functional, allowing users to choose a custom output location for their web downloads via the UI.
-
----
-
-# Bug Fix - Action Button Label Not Updating with Mode Change During Active Operation
-
-## Issue:
-If an operation (local scan or web download) was started, and the user then switched the mode (e.g., from 'Web' to 'Local') while the operation was still in progress, the `actionButton`'s label would not update to reflect the new mode (e.g., it would still say 'Start Web Download' instead of 'Start Local Scan'). The button itself would be correctly disabled.
-
-## Root Cause:
-The `updateVisibleOptions` function in `electron/renderer.js` contained a condition (`&& !stopButton.disabled`) that prevented the `actionButton.textContent` from being updated if an operation was active (i.e., if the `stopButton` was enabled).
-
-## Fix Implemented:
-
-1.  **`electron/renderer.js`:**
-    *   In the `updateVisibleOptions` function, the condition `&& !stopButton.disabled` was removed from the logic that sets the `actionButton.textContent`.
-    *   Now, the `actionButton`'s label will always be updated to 'Start Local Scan' or 'Start Web Download' based on the selected mode, regardless of whether an operation is currently running.
-
-## Overall Assessment:
-The action button's label now correctly and consistently reflects the selected application mode, even if an operation is in progress and the button is disabled.
-
----
-
-# Bug Fix - 'sender is not defined' in Stop IPC Handlers
-
-## Issue:
-When attempting to stop a local scan or web download, a `ReferenceError: sender is not defined` would occur in `electron/main.cjs`. This prevented the stop confirmation or error messages from being sent back to the renderer process correctly.
-
-## Root Cause:
-The `STOP_LOCAL_SCAN` and `STOP_WEB_DOWNLOAD` IPC handlers in `electron/main.cjs` were attempting to use `sender.send(...)` to communicate back to the renderer. However, the `sender` object is a property of the `event` object passed to the IPC handler (i.e., `event.sender`). The variable `sender` itself was not defined in the handlers' scope.
-
-## Fix Implemented:
-
-1.  **`electron/main.cjs`:**
-    *   In both `ipcMain.handle('STOP_LOCAL_SCAN', ...)` and `ipcMain.handle('STOP_WEB_DOWNLOAD', ...)`:
-        *   Changed all instances of `sender.send(...)` to `event.sender.send(...)`.
-        *   Ensured the `event` parameter was correctly included in the function signatures for these handlers.
-        *   Adjusted the payload of messages sent back for consistency (e.g., sending an object `{ message: '...' }`).
-
-## Overall Assessment:
-The error has been resolved. The stop functionality should now correctly communicate its status (success, error, or no active scan/download) back to the renderer process, allowing the UI to update accordingly.
+The secondary buttons are now significantly more visible, using the accent color for their background and a contrasting text color. This improves the overall usability and aesthetic of the application by making key interactive elements more prominent.
