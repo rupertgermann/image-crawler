@@ -80,6 +80,14 @@ body {
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border-color);
+  gap: var(--spacing-lg);
+}
+
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
 }
 
 .header h1 {
@@ -275,25 +283,62 @@ body {
 /* Mode selection styles */
 .mode-selection {
   display: flex;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  padding: 2px;
 }
 
 .mode-option {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--border-color);
+  justify-content: center;
+  min-width: 80px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid transparent;
   border-radius: var(--border-radius-sm);
-  background-color: var(--bg-primary);
+  background-color: transparent;
   cursor: pointer;
   transition: all var(--transition-base);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.mode-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  top: 0;
+  left: 0;
+  cursor: pointer;
+}
+
+.mode-option:has(input[type="radio"]:checked) {
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
+  color: var(--accent-color);
 }
 
 .mode-option:hover {
   background-color: var(--bg-secondary);
-  border-color: var(--accent-color);
+}
+
+.mode-option:active {
+  transform: translateY(1px);
+}
+
+.mode-option:focus-within {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 .mode-option input[type="radio"] {
