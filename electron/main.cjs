@@ -66,8 +66,9 @@ const fs = require('fs-extra');
             width: 1000, // Increased width
             height: 750, // Increased height
             webPreferences: {
-                contextIsolation: true, // Keep true for security
-                nodeIntegration: false // Keep false for security
+                preload: path.join(__dirname, 'preload.js'),
+                nodeIntegration: false, // is false by default
+                contextIsolation: true, // protect against prototype pollution
             }
         });
         mainWindow.loadFile('electron/index.html');
@@ -131,30 +132,40 @@ const fs = require('fs-extra');
 
     // --- IPC Handlers for File Dialogs --- //
     ipcMain.handle('OPEN_DIRECTORY_DIALOG', async (event, defaultPath) => {
-        Logger.debug(`Opening directory dialog with default path: ${defaultPath}`);
-        const { canceled, filePaths } = await dialog.showOpenDialog({
-            properties: ['openDirectory'],
-            defaultPath: defaultPath || os.homedir()
-        });
-        if (!canceled && filePaths.length > 0) {
-            Logger.debug(`Selected directory: ${filePaths[0]}`);
-            return filePaths[0];
-        } else {
-            Logger.debug('Directory selection canceled.');
+        Logger.debug(`[main.cjs] OPEN_DIRECTORY_DIALOG received with defaultPath: ${defaultPath}`);
+        try {
+            const { canceled, filePaths } = await dialog.showOpenDialog({
+                properties: ['openDirectory'],
+                defaultPath: defaultPath || os.homedir()
+            });
+            if (!canceled && filePaths.length > 0) {
+                Logger.debug(`[main.cjs] Selected directory: ${filePaths[0]}`);
+                return filePaths[0];
+            } else {
+                Logger.debug('[main.cjs] Directory selection canceled.');
+                return null;
+            }
+        } catch (error) {
+            Logger.error(`[main.cjs] Error in OPEN_DIRECTORY_DIALOG: ${error.message}`, error);
             return null;
         }
     });
 
     ipcMain.handle('OPEN_SAVE_DIALOG', async (event, defaultPath) => {
-        Logger.debug(`Opening save dialog with default path: ${defaultPath}`);
-        const { canceled, filePath } = await dialog.showSaveDialog({
-            defaultPath: defaultPath || path.join(os.homedir(), 'output.zip')
-        });
-        if (!canceled && filePath) {
-            Logger.debug(`Selected save path: ${filePath}`);
-            return filePath;
-        } else {
-            Logger.debug('Save dialog canceled.');
+        Logger.debug(`[main.cjs] OPEN_SAVE_DIALOG received with defaultPath: ${defaultPath}`);
+        try {
+            const { canceled, filePath } = await dialog.showSaveDialog({
+                defaultPath: defaultPath || path.join(os.homedir(), 'output.zip')
+            });
+            if (!canceled && filePath) {
+                Logger.debug(`[main.cjs] Selected save path: ${filePath}`);
+                return filePath;
+            } else {
+                Logger.debug('[main.cjs] Save dialog canceled.');
+                return null;
+            }
+        } catch (error) {
+            Logger.error(`[main.cjs] Error in OPEN_SAVE_DIALOG: ${error.message}`, error);
             return null;
         }
     });
@@ -178,18 +189,18 @@ const fs = require('fs-extra');
         try {
             const crawler = new LocalCrawler(options);
             crawler.on('progress', (data) => {
-                sender.send('LOCAL_SCAN_PROGRESS', data);
+                sender.send('local-crawler-log', data);
             });
             crawler.on('complete', (data) => {
-                sender.send('LOCAL_SCAN_COMPLETE', data);
+                sender.send('local-crawler-complete', data);
             });
             crawler.on('error', (error) => {
-                sender.send('LOCAL_SCAN_ERROR', error);
+                sender.send('local-crawler-error', error);
             });
             await crawler.start();
             return { success: true };
         } catch (error) {
-            Logger.error('Error starting local scan:', error);
+            Logger.error(`Error starting local scan: ${error.message}`, error);
             return { success: false, message: error.message };
         }
     });
@@ -204,18 +215,18 @@ const fs = require('fs-extra');
         try {
             const crawler = new PlaywrightCrawler(options);
             crawler.on('progress', (data) => {
-                sender.send('WEB_DOWNLOAD_PROGRESS', data);
+                sender.send('web-crawler-log', data);
             });
             crawler.on('complete', (data) => {
-                sender.send('WEB_DOWNLOAD_COMPLETE', data);
+                sender.send('web-crawler-complete', data);
             });
             crawler.on('error', (error) => {
-                sender.send('WEB_DOWNLOAD_ERROR', error);
+                sender.send('web-crawler-error', error);
             });
             await crawler.start();
             return { success: true };
         } catch (error) {
-            Logger.error('Error starting web download:', error);
+            Logger.error(`Error starting web download: ${error.message}`, error);
             return { success: false, message: error.message };
         }
     });

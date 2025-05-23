@@ -161,7 +161,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     // --- End of Global Settings ---
 
-    // --- Event Listeners for Local Mode ---
+    // --- Event Listeners for Local Mode --- 
+    const selectSourceDirBtn = document.getElementById('selectSourceDirBtn');
+    const localSourceDirInput = document.getElementById('localSourceDir');
+    if (selectSourceDirBtn && localSourceDirInput && window.electronAPI) {
+        selectSourceDirBtn.addEventListener('click', async () => {
+            try {
+                const directoryPath = await window.electronAPI.selectDirectory('Select Source Directory');
+                if (directoryPath) localSourceDirInput.value = directoryPath;
+                logMessage(directoryPath ? `Selected local source: ${directoryPath}` : 'Local source selection canceled.');
+            } catch (error) { logMessage(`Error selecting local source dir: ${error.message}`); }
+        });
+    }
+
+    const selectLocalOutputDirBtn = document.getElementById('selectLocalOutputDirBtn');
+    // localOutputDirInput is already defined at the top
+    if (selectLocalOutputDirBtn && localOutputDirInput && window.electronAPI) {
+        selectLocalOutputDirBtn.addEventListener('click', async () => {
+            try {
+                const directoryPath = await window.electronAPI.selectDirectory('Select Local Output Directory');
+                if (directoryPath) localOutputDirInput.value = directoryPath;
+                logMessage(directoryPath ? `Selected local output: ${directoryPath}` : 'Local output selection canceled.');
+            } catch (error) { logMessage(`Error selecting local output dir: ${error.message}`); }
+        });
+    }
+
     const startLocalScanBtn = document.getElementById('startLocalScanBtn');
     if (startLocalScanBtn && window.electronAPI) {
         startLocalScanBtn.addEventListener('click', async () => {
@@ -198,6 +222,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Event Listener for Web Mode ---
+    const selectWebOutputDirBtn = document.getElementById('selectWebOutputDirBtn');
+    // webOutputDirInput is already defined at the top
+    if (selectWebOutputDirBtn && webOutputDirInput && window.electronAPI) {
+        selectWebOutputDirBtn.addEventListener('click', async () => {
+            try {
+                const directoryPath = await window.electronAPI.selectDirectory('Select Web Output Directory');
+                if (directoryPath) webOutputDirInput.value = directoryPath;
+                logMessage(directoryPath ? `Selected web output: ${directoryPath}` : 'Web output selection canceled.');
+            } catch (error) { logMessage(`Error selecting web output dir: ${error.message}`); }
+        });
+    }
+
     const startWebDownloadBtn = document.getElementById('startWebDownloadBtn');
     if (startWebDownloadBtn && window.electronAPI) {
         startWebDownloadBtn.addEventListener('click', async () => {
