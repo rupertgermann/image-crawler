@@ -86,7 +86,7 @@ body {
 .header__left {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   flex-wrap: wrap;
 }
 
@@ -101,6 +101,12 @@ body {
   display: flex;
   gap: var(--spacing-sm);
   align-items: center;
+}
+
+.header__mode-label {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  /* Vertically centered by .header__left's align-items: center */
 }
 
 /* Section styles */

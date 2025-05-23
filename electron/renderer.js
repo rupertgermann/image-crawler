@@ -4,15 +4,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     const localOptions = document.getElementById('localOptions');
     const webOptions = document.getElementById('webOptions');
+    const actionButton = document.getElementById('actionButton');
+    const stopButton = document.getElementById('stopButton');
+
+    let currentOperation = null; // To track what's running: 'local' or 'web'
 
     function updateVisibleOptions() {
         const selectedMode = document.querySelector('input[name="mode"]:checked').value;
         if (selectedMode === 'local') {
             localOptions.classList.add('active');
             webOptions.classList.remove('active');
+            if (actionButton && !stopButton.disabled) { // Only change text if no operation is running
+                actionButton.textContent = 'Start Local Scan';
+            }
         } else if (selectedMode === 'web') {
             localOptions.classList.remove('active');
             webOptions.classList.add('active');
+            if (actionButton && !stopButton.disabled) { // Only change text if no operation is running
+                actionButton.textContent = 'Start Web Download';
+            }
         }
     }
 
@@ -210,7 +220,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     // --- End of Global Settings ---
 
-    // --- Event Listeners for Local Mode --- 
+    // --- Event Listeners for Directory Selection (Local Mode) ---
     const selectSourceDirBtn = document.getElementById('selectSourceDirBtn');
     const localSourceDirInput = document.getElementById('localSourceDir');
     if (selectSourceDirBtn && localSourceDirInput && window.electronAPI) {
@@ -235,99 +245,183 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const startLocalScanBtn = document.getElementById('startLocalScanBtn');
-    if (startLocalScanBtn && window.electronAPI) {
-        startLocalScanBtn.addEventListener('click', async () => {
-            const sourceDir = document.getElementById('localSourceDir').value;
-            const outputDir = localOutputDirInput.value; 
-            if (!sourceDir || !outputDir) { alert('Source and Output directories are required for local scan.'); return; }
-            const options = {
-                sourceDir, outputDir,
-                minWidth: parseInt(localMinWidthInput.value) || null,
-                minHeight: parseInt(localMinHeightInput.value) || null,
-                minSize: localMinSizeInput.value || null,
-                maxDownloads: parseInt(localMaxFilesInput.value) || 0,
-                extensions: localFileTypesInput.value.split(',').map(ft => ft.trim()).filter(ft => ft),
-                preserveStructure: localPreserveStructureCheckbox.checked
-            };
-            for (const key in options) { if (options[key] === null || Number.isNaN(options[key]) || (Array.isArray(options[key]) && !options[key].length)) { if (key !== 'preserveStructure' && key !== 'maxDownloads') delete options[key]; } }
-            logMessage('Starting local scan...');
-            startLocalScanBtn.disabled = true;
-            const originalButtonText = startLocalScanBtn.textContent;
-            startLocalScanBtn.textContent = 'Scanning...';
+    // Event listener for the unified action button
+    if (actionButton && window.electronAPI) {
+        actionButton.addEventListener('click', async () => {
+            const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+            actionButton.disabled = true;
+            stopButton.disabled = false;
+            const originalButtonText = actionButton.textContent;
+            actionButton.textContent = 'Processing...';
 
-            setupLocalCrawlerEventListeners(startLocalScanBtn, originalButtonText);
-
-            try {
-                const result = await window.electronAPI.startLocalScan(options);
-                if (result.success) {
-                    logMessage('Main process response (local scan): Scan initiated successfully.');
-                } else {
-                    logMessage(`Main process response (local scan): Failed to start scan - ${result.message || 'Unknown error'}`);
+            if (selectedMode === 'local') {
+                currentOperation = 'local';
+                const sourceDir = document.getElementById('localSourceDir').value;
+                const outputDir = localOutputDirInput.value;
+                if (!sourceDir || !outputDir) {
+                    alert('Source and Output directories are required for local scan.');
+                    actionButton.disabled = false;
+                    stopButton.disabled = true;
+                    actionButton.textContent = originalButtonText;
+                    currentOperation = null;
+                    return;
                 }
-            } catch (error) {
-                logMessage(`Error starting local scan: ${error.message}`);
-                startLocalScanBtn.disabled = false;
-                startLocalScanBtn.textContent = originalButtonText;
+                const options = {
+                    sourceDir,
+                    outputDir,
+                    minWidth: parseInt(localMinWidthInput.value) || 0,
+                    minHeight: parseInt(localMinHeightInput.value) || 0,
+                    minFileSize: localMinSizeInput.value || '0KB',
+                    maxFiles: parseInt(localMaxFilesInput.value) || 0,
+                    fileTypes: localFileTypesInput.value ? localFileTypesInput.value.split(',').map(ft => ft.trim()) : ['jpg', 'png', 'jpeg', 'gif', 'bmp'],
+                    preserveStructure: localPreserveStructureCheckbox.checked
+                };
+                logMessage(`Starting local scan with options: ${JSON.stringify(options)}`);
+                try {
+                    setupLocalCrawlerEventListeners(actionButton, originalButtonText);
+                    await window.electronAPI.startLocalScan(options);
+                } catch (error) {
+                    logMessage(`Error starting local scan: ${error.message}`);
+                    actionButton.disabled = false;
+                    stopButton.disabled = true;
+                    actionButton.textContent = originalButtonText;
+                    currentOperation = null;
+                }
+            } else if (selectedMode === 'web') {
+                currentOperation = 'web';
+                const query = document.getElementById('webQuery').value;
+                const outputDir = webOutputDirInput.value;
+                if (!query.trim() || !outputDir) {
+                    alert('Search query and Output directory are required.');
+                    actionButton.disabled = false;
+                    stopButton.disabled = true;
+                    actionButton.textContent = originalButtonText;
+                    currentOperation = null;
+                    return;
+                }
+                const options = {
+                    query: query.trim(),
+                    outputDir,
+                    maxDownloads: parseInt(webMaxDownloadsInput.value) || 0,
+                    minWidth: parseInt(webMinWidthInput.value) || 0,
+                    minHeight: parseInt(webMinHeightInput.value) || 0,
+                    minFileSize: webMinSizeInput.value || '0KB',
+                    fileTypes: webFileTypesInput.value ? webFileTypesInput.value.split(',').map(ft => ft.trim()) : ['jpg', 'png'],
+                    provider: webProviderSelect.value || 'all',
+                    safeSearch: webSafeSearchCheckbox.checked,
+                    headless: webHeadlessCheckbox.checked,
+                    timeout: parseInt(webTimeoutInput.value) || 30000
+                };
+                logMessage(`Starting web download with options: ${JSON.stringify(options)}`);
+                try {
+                    setupWebCrawlerEventListeners(actionButton, originalButtonText);
+                    await window.electronAPI.startWebDownload(options);
+                } catch (error) {
+                    logMessage(`Error starting web download: ${error.message}`);
+                    actionButton.disabled = false;
+                    stopButton.disabled = true;
+                    actionButton.textContent = originalButtonText;
+                    currentOperation = null;
+                }
             }
         });
     }
 
-    // --- Event Listener for Web Mode ---
-    const selectWebOutputDirBtn = document.getElementById('selectWebOutputDirBtn');
-    // webOutputDirInput is already defined at the top
-    if (selectWebOutputDirBtn && webOutputDirInput && window.electronAPI) {
-        selectWebOutputDirBtn.addEventListener('click', async () => {
-            try {
-                const directoryPath = await window.electronAPI.selectDirectory('Select Web Output Directory');
-                if (directoryPath) webOutputDirInput.value = directoryPath;
-                logMessage(directoryPath ? `Selected web output: ${directoryPath}` : 'Web output selection canceled.');
-            } catch (error) { logMessage(`Error selecting web output dir: ${error.message}`); }
-        });
-    }
-
-    const startWebDownloadBtn = document.getElementById('startWebDownloadBtn');
-    if (startWebDownloadBtn && window.electronAPI) {
-        startWebDownloadBtn.addEventListener('click', async () => {
-            const query = document.getElementById('webQuery').value;
-            const outputDir = webOutputDirInput.value; 
-            if (!query.trim() || !outputDir) { alert('Search query and Output directory are required.'); return; }
-            const options = {
-                query, outputDir,
-                maxDownloads: parseInt(webMaxDownloadsInput.value) || 0,
-                minWidth: parseInt(webMinWidthInput.value) || null,
-                minHeight: parseInt(webMinHeightInput.value) || null,
-                minSize: webMinSizeInput.value || null,
-                extensions: webFileTypesInput.value.split(',').map(ft => ft.trim()).filter(ft => ft),
-                provider: webProviderSelect.value,
-                safeSearch: webSafeSearchCheckbox.checked,
-                headless: webHeadlessCheckbox.checked,
-                timeout: parseInt(webTimeoutInput.value) || 30000
-            };
-            for (const key in options) { if (options[key] === null || Number.isNaN(options[key]) || (Array.isArray(options[key]) && !options[key].length)) { if (key !== 'safeSearch' && key !== 'headless' && (key !== 'maxDownloads' || options[key] !==0) ) delete options[key]; } }
-
-            logMessage('Starting web download...');
-            startWebDownloadBtn.disabled = true;
-            const originalButtonText = startWebDownloadBtn.textContent;
-            startWebDownloadBtn.textContent = 'Downloading...';
-
-            setupWebCrawlerEventListeners(startWebDownloadBtn, originalButtonText);
-
-            try {
-                const result = await window.electronAPI.startWebDownload(options);
-                if (result.success) {
-                    logMessage('Main process response (web download): Download initiated successfully.');
-                } else {
-                    logMessage(`Main process response (web download): Failed to start download - ${result.message || 'Unknown error'}`);
-                }
-            } catch (error) {
-                logMessage(`Error starting web download: ${error.message}`);
-                startWebDownloadBtn.disabled = false;
-                startWebDownloadBtn.textContent = originalButtonText;
+    // Event listener for the stop button
+    if (stopButton && window.electronAPI) {
+        stopButton.addEventListener('click', async () => {
+            logMessage(`Stop button clicked. Current operation: ${currentOperation}`);
+            if (currentOperation === 'local') {
+                logMessage('Attempting to stop local scan...');
+                await window.electronAPI.stopLocalScan();
+            } else if (currentOperation === 'web') {
+                logMessage('Attempting to stop web download...');
+                await window.electronAPI.stopWebDownload();
             }
+            // State changes (disabling stop, enabling action) will be handled by completion/error events from main process
+            // or if stop is immediate, can be done here too.
+            // For now, let's assume completion events will reset buttons.
+            // stopButton.disabled = true; // Potentially disable immediately
+            // actionButton.disabled = false; // Potentially enable immediately
+            // updateVisibleOptions(); // Refresh button text
         });
     }
-    
+
+    // --- IPC Event Handlers --- (no changes to these functions, but they now affect actionButton/stopButton)
+    // Helper function to set up common event listeners for local crawler operations
+    function setupLocalCrawlerEventListeners(buttonElement, originalButtonText) {
+        window.electronAPI.onScanLog((level, message) => {
+            logMessage(`[LOCAL SCAN - ${level.toUpperCase()}]: ${message}`);
+        });
+        window.electronAPI.onScanComplete((summary) => {
+            logMessage(`Local scan complete: ${summary}`);
+            alert(`Local scan finished!
+Processed: ${summary.processed}
+Copied: ${summary.copied}
+Errors: ${summary.errors}`);
+            buttonElement.disabled = false;
+            stopButton.disabled = true;
+            buttonElement.textContent = originalButtonText;
+            currentOperation = null;
+            updateVisibleOptions(); // Ensure button text is correct for current mode
+        });
+        window.electronAPI.onScanError((error) => {
+            logMessage(`Local scan error: ${error}`);
+            alert(`Local scan failed: ${error}`);
+            buttonElement.disabled = false;
+            stopButton.disabled = true;
+            buttonElement.textContent = originalButtonText;
+            currentOperation = null;
+            updateVisibleOptions();
+        });
+        window.electronAPI.onScanStopped(() => {
+            logMessage('Local scan has been stopped by user.');
+            alert('Local scan stopped.');
+            buttonElement.disabled = false;
+            stopButton.disabled = true;
+            buttonElement.textContent = originalButtonText;
+            currentOperation = null;
+            updateVisibleOptions();
+        });
+    }
+
+    // Helper function to set up common event listeners for web crawler operations
+    function setupWebCrawlerEventListeners(buttonElement, originalButtonText) {
+        window.electronAPI.onWebLog((level, message) => {
+            logMessage(`[WEB DOWNLOAD - ${level.toUpperCase()}]: ${message}`);
+        });
+        window.electronAPI.onWebComplete((summary) => {
+            logMessage(`Web download complete: ${summary}`);
+            alert(`Web download finished!
+Attempted: ${summary.attempted}
+Successful: ${summary.successful}
+Failed: ${summary.failed}`);
+            buttonElement.disabled = false;
+            stopButton.disabled = true;
+            buttonElement.textContent = originalButtonText;
+            currentOperation = null;
+            updateVisibleOptions(); // Ensure button text is correct for current mode
+        });
+        window.electronAPI.onWebError((error) => {
+            logMessage(`Web download error: ${error}`);
+            alert(`Web download failed: ${error}`);
+            buttonElement.disabled = false;
+            stopButton.disabled = true;
+            buttonElement.textContent = originalButtonText;
+            currentOperation = null;
+            updateVisibleOptions();
+        });
+        window.electronAPI.onWebStopped(() => {
+            logMessage('Web download has been stopped by user.');
+            alert('Web download stopped.');
+            buttonElement.disabled = false;
+            stopButton.disabled = true;
+            buttonElement.textContent = originalButtonText;
+            currentOperation = null;
+            updateVisibleOptions();
+        });
+    }
+
     // --- Event Listener for Save UI Logs Button ---
     const saveUiLogsBtn = document.getElementById('saveUiLogsBtn');
     // logArea is already defined as const logArea = document.getElementById('logArea');
@@ -362,69 +456,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     // --- End of Save UI Logs Button Listener ---
-
-    // Helper Functions for Event Listeners
-    function setupLocalCrawlerEventListeners(buttonElement, originalButtonText) {
-        if (window.electronAPI) {
-            // Remove previous listeners to prevent duplicates
-            if (window.electronAPI.removeAllLocalCrawlerListeners) {
-                window.electronAPI.removeAllLocalCrawlerListeners();
-            }
-            if (window.electronAPI.onLocalCrawlerLog) {
-                window.electronAPI.onLocalCrawlerLog((data) => {
-                    logMessage(`Local Scan Progress: ${data.processed}/${data.total} files`);
-                    // Update UI with progress if needed
-                });
-            }
-            if (window.electronAPI.onLocalCrawlerComplete) {
-                window.electronAPI.onLocalCrawlerComplete((data) => {
-                    const summaryMessage = `Local Scan Complete: Found ${data.foundImages} images, Copied ${data.copiedImages}, Skipped ${data.skippedFiles}, Errors ${data.errorCount}.`;
-                    logMessage(summaryMessage);
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = originalButtonText;
-                });
-            }
-            if (window.electronAPI.onLocalCrawlerError) {
-                window.electronAPI.onLocalCrawlerError((error) => {
-                    logMessage(`Local Scan Error: ${error.message}`);
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = originalButtonText;
-                    alert(`Local scan error: ${error.message}`);
-                });
-            }
-        }
-    }
-
-    function setupWebCrawlerEventListeners(buttonElement, originalButtonText) {
-        if (window.electronAPI) {
-            // Remove previous listeners to prevent duplicates
-            if (window.electronAPI.removeAllWebCrawlerListeners) {
-                window.electronAPI.removeAllWebCrawlerListeners();
-            }
-            if (window.electronAPI.onWebCrawlerLog) {
-                window.electronAPI.onWebCrawlerLog((data) => {
-                    logMessage(`Web Download Progress: ${data.downloadedCount}/${data.requestedCount} files`);
-                    // Update UI with progress if needed
-                });
-            }
-            if (window.electronAPI.onWebCrawlerComplete) {
-                window.electronAPI.onWebCrawlerComplete((data) => {
-                    const summaryMessage = `Web Download Complete: Downloaded ${data.downloaded}, Skipped ${data.skipped}, Errors ${data.errors}.`;
-                    logMessage(summaryMessage);
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = originalButtonText;
-                });
-            }
-            if (window.electronAPI.onWebCrawlerError) {
-                window.electronAPI.onWebCrawlerError((error) => {
-                    logMessage(`Web Download Error: ${error.message}`);
-                    buttonElement.disabled = false;
-                    buttonElement.textContent = originalButtonText;
-                    alert(`Web download error: ${error.message}`);
-                });
-            }
-        }
-    }
 
     logMessage('UI is ready.');
 });

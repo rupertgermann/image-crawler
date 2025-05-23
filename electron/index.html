@@ -22,6 +22,7 @@
         <header class="header">
             <div class="header__left">
                 <h1>Image Crawler</h1>
+                <span class="header__mode-label">Mode:</span>
                 <div class="mode-selection" role="radiogroup" aria-label="Application mode">
                     <label class="mode-option">
                         <input type="radio" name="mode" value="local" checked>
@@ -34,6 +35,8 @@
                 </div>
             </div>
             <div class="header__actions">
+                <button id="actionButton" class="button button--success">Start Local Scan</button>
+                <button id="stopButton" class="button button--danger" disabled>Stop</button>
                 <button id="themeToggle" class="button button--icon" aria-label="Toggle dark mode">
                     <span class="theme-icon theme-icon--light" id="lightIcon">☀️</span>
                     <span class="theme-icon theme-icon--dark" id="darkIcon">🌙</span>
@@ -83,9 +86,6 @@
                         <input type="checkbox" id="localPreserveStructure">
                         <label for="localPreserveStructure">Preserve Directory Structure</label>
                     </div>
-                </div>
-                <div class="mt-md">
-                    <button id="startLocalScanBtn" class="button button--success">Start Local Scan</button>
                 </div>
             </section>
 
@@ -150,9 +150,6 @@
                         <label for="webTimeout">Browser Timeout (ms)</label>
                         <input type="number" id="webTimeout" class="input" placeholder="e.g., 30000">
                     </div>
-                </div>
-                <div class="mt-md">
-                    <button id="startWebDownloadBtn" class="button button--success">Start Web Download</button>
                 </div>
             </section>
             

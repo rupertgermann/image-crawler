@@ -346,3 +346,36 @@ Migrate remaining Jest unit tests to Playwright Test, handle missing source file
 *   Run all Playwright tests using `npm test` to verify the complete migration of all test files.
 *   Address any failures from the test run.
 *   Update `project-status.md` at the end of the session.
+
+## Progress Update (Header Action Buttons - Phase 1: UI Implementation)
+
+**Implemented Features:**
+
+1.  **Header Structure Update (`electron/index.html`):**
+    *   Moved mode selection (`<input type="radio" name="mode">`) into the `header__left` div.
+    *   Added a "Mode:" label (`<span class="header__mode-label">`) next to the app title.
+    *   Added a unified "Start" button (`<button id="actionButton">`) and a "Stop" button (`<button id="stopButton">`) to the `header__actions` div.
+    *   Removed the old, separate "Start Local Scan" and "Start Web Download" buttons from their respective option sections.
+
+2.  **CSS Styling (`electron/css/styles.css`):**
+    *   Adjusted `gap` in `.header__left` for a more compact layout.
+    *   Added styles for `.header__mode-label` to ensure proper alignment and appearance.
+    *   Leveraged existing button styles for the new header buttons.
+
+3.  **Renderer Logic (`electron/renderer.js`):**
+    *   Added references and event listeners for the new `actionButton` and `stopButton`.
+    *   Implemented `updateVisibleOptions()` to dynamically change `actionButton` text ("Start Local Scan" / "Start Web Download") based on the selected mode and whether an operation is active.
+    *   Centralized start logic: `actionButton` now triggers either local scan or web download based on the current mode.
+    *   Implemented `stopButton` logic to call respective `stopLocalScan` or `stopWebDownload` IPC channels.
+    *   Introduced a `currentOperation` variable to track whether a 'local' or 'web' task is running.
+    *   Modified IPC event handlers (`setupLocalCrawlerEventListeners`, `setupWebCrawlerEventListeners`) to:
+        *   Correctly update the state (enabled/disabled, text content) of the new `actionButton` and `stopButton`.
+        *   Handle new `onScanStopped` and `onWebStopped` events to reset UI state after a stop command.
+
+**Encountered Errors & Fixes:**
+*   Initially, the `actionButton` text was not updating correctly when switching modes while an operation was running. This was fixed by ensuring the text only updates if `stopButton.disabled` is true (i.e., no operation active).
+*   Ensured that IPC event handlers for completion, error, and stop events correctly reset the `currentOperation` state and update button texts/states via `updateVisibleOptions()`.
+
+**Next Steps (based on current task):**
+*   Verify and implement `stop()` methods in `LocalCrawler` and `WebCrawler` classes.
+*   Ensure `main.cjs` correctly handles `stopLocalScan` and `stopWebDownload` IPC messages, calls the crawler `stop()` methods, and emits `scan-stopped` / `web-stopped` events back to the renderer.
