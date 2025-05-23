@@ -100,14 +100,6 @@ public
 .yarn/install-state.gz
 .pnp.*
 
-# Downloaded images
-downloads/
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.webp
-
 # OS generated files
 .DS_Store
 .DS_Store?
