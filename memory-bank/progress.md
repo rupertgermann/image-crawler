@@ -303,3 +303,24 @@ To enhance the visibility of secondary action buttons (e.g., "Select Source", "S
 
 ## Overall Assessment:
 The secondary buttons are now significantly more visible, using the accent color for their background and a contrasting text color. This improves the overall usability and aesthetic of the application by making key interactive elements more prominent.
+
+---
+
+# UI Improvement - Remove Local Scan Completion Dialogs
+
+## Objective:
+To remove the disruptive `alert` dialogs that appear upon the completion or stopping of a local scan, while ensuring the information is still available in the log area.
+
+## Changes Implemented in `electron/renderer.js`:
+
+1.  **`window.electronAPI.onScanComplete` Handler**:
+    *   The `alert` call displaying the scan summary upon completion has been commented out.
+
+2.  **`window.electronAPI.onScanStopped` Handler**:
+    *   The `alert` call confirming the scan has been stopped has been commented out.
+
+3.  **`window.electronAPI.onWebComplete` Handler**:
+    *   The `alert` call for web download completion remains active, as its removal was not requested.
+
+## Overall Assessment:
+The application now provides a less intrusive user experience during local scan operations by removing pop-up alerts. Users can still review scan status and summaries within the integrated log area.

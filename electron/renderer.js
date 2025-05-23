@@ -372,10 +372,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         window.electronAPI.onScanComplete((summary) => {
             logMessage(`Local scan complete: ${summary}`);
-            alert(`Local scan finished!
-Processed: ${summary.processed}
-Copied: ${summary.copied}
-Errors: ${summary.errors}`);
+            // Removed alert dialog as per user request
+            // alert(`Local scan finished!\nProcessed: ${summary.processed}\nCopied: ${summary.copied}\nErrors: ${summary.errors}`);
             buttonElement.disabled = false;
             stopButton.disabled = true;
             buttonElement.textContent = originalButtonText;
@@ -393,7 +391,8 @@ Errors: ${summary.errors}`);
         });
         window.electronAPI.onScanStopped(() => {
             logMessage('Local scan has been stopped by user.');
-            alert('Local scan stopped.');
+            // Removed alert dialog as per user request
+            // alert('Local scan stopped.');
             buttonElement.disabled = false;
             stopButton.disabled = true;
             buttonElement.textContent = originalButtonText;
@@ -409,10 +408,7 @@ Errors: ${summary.errors}`);
         });
         window.electronAPI.onWebComplete((summary) => {
             logMessage(`Web download complete: ${summary}`);
-            alert(`Web download finished!
-Attempted: ${summary.attempted}
-Successful: ${summary.successful}
-Failed: ${summary.failed}`);
+            alert(`Web download finished!\nAttempted: ${summary.attempted}\nSuccessful: ${summary.successful}\nFailed: ${summary.failed}`);
             buttonElement.disabled = false;
             stopButton.disabled = true;
             buttonElement.textContent = originalButtonText;
