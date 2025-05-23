@@ -397,3 +397,51 @@ To enhance user experience by removing the pop-up alert dialog that appears upon
 
 ## Overall Assessment:
 The web download completion notification is now less intrusive, relying on the log area for feedback. This aligns with similar changes made for local scan notifications, improving consistency in user experience.
+
+---
+
+# Documentation: Update README.md
+
+## Objective:
+To comprehensively update the `README.md` file to reflect the current state of the application, including the Electron GUI, its features, installation, usage, and to add visual showcases.
+
+## Changes Implemented in `README.md`:
+
+1.  **Showcase / Demo Section Updated**:
+    *   Replaced the placeholder text with actual screenshots of the Electron application:
+        *   `./docs/readme_images/image_crawler_light.png` (Light Mode)
+        *   `./docs/readme_images/image_crawler_dark.png` (Dark Mode)
+
+2.  **Features Section Expanded**:
+    *   Added a new top-level bullet point: "**Electron GUI Mode**".
+    *   Listed key GUI features under this new point, including:
+        *   User-friendly interface for Local and Web modes.
+        *   Dark/Light theme support (auto-detect, manual toggle).
+        *   Integrated log display with save/clear functionality.
+        *   UI controls for starting/stopping operations.
+        *   Interactive directory selection.
+        *   Persistent configuration (settings saved/loaded).
+        *   Global default output directory setting.
+    *   Minor updates to Web Mode features for clarity (e.g., headless browser option).
+
+3.  **Installation Section Restructured and Updated**:
+    *   Clarified that the application is cross-platform (Windows, macOS, Linux).
+    *   Renamed "Automatic Installation (Recommended)" to "**For CLI Usage (Global Install)**".
+    *   Added a new subsection: "**For Electron GUI Usage (Running from Source/Development)**" with detailed steps:
+        *   `git clone https://github.com/rupertgermann/image-crawler.git`
+        *   `cd image-crawler`
+        *   `npm install`
+        *   `npx playwright install --with-deps` (to ensure browsers are available for Electron)
+        *   `npm run electron:start` (confirmed from `package.json`)
+
+4.  **Usage Section Updated**:
+    *   Added an introductory sentence stating the app can be used via CLI or GUI.
+    *   Added a new subsection: "**Electron GUI Mode**" explaining how to launch it (`npm run electron:start`) and briefly describing UI interaction (mode selection, options, start/stop, log area, themes).
+    *   Renamed the existing interactive mode section to "**CLI Mode**".
+
+5.  **General Enhancements**:
+    *   Updated the "Why Image Crawler?" section to mention both CLI and GUI.
+    *   Ensured all existing CLI examples, options, and troubleshooting information were preserved.
+
+## Overall Assessment:
+The `README.md` now accurately reflects the project's capabilities, especially highlighting the Electron GUI. The inclusion of screenshots and clear instructions for both CLI and GUI usage significantly improves the documentation's quality and usefulness for new users and developers.

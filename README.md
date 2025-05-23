@@ -10,13 +10,31 @@ This application was proudly developed 100% by AI, leveraging the capabilities o
 
 ## Why Image Crawler?
 
-Image Crawler was created to provide a simple, yet powerful and unified interface for downloading high-quality images from various sources or organizing local image collections efficiently.
+Image Crawler was created to provide a simple, yet powerful and unified interface for downloading high-quality images from various sources or organizing local image collections efficiently. It offers both a Command Line Interface (CLI) for automation and scripting, and a user-friendly Graphical User Interface (GUI) for interactive use.
 
 ## Showcase / Demo
+
+Here's a glimpse of the Image Crawler Electron application in action:
+
+**Light Mode:**
+![Image Crawler Light Mode](./docs/readme_images/image_crawler_light.png)
+
+**Dark Mode:**
+![Image Crawler Dark Mode](./docs/readme_images/image_crawler_dark.png)
 
 (A visual demonstration GIF showcasing the crawler in action is planned for a future update!)
 
 ## Features
+
+- **Electron GUI Mode**:
+  - User-friendly interface for both Local and Web modes.
+  - Dark and Light theme support with automatic system preference detection and manual toggle.
+  - Integrated log display area with real-time updates.
+  - "Save UI Logs" and "Clear Logs" functionality for easy log management.
+  - Ability to start and stop crawling operations directly from the UI.
+  - Interactive folder selection dialogs for input and output directories.
+  - Persistent configuration: remembers your last used settings (output directories, UI theme, etc.).
+  - Global default output directory setting.
 
 - **Local Mode**: Scan local directories for images
   - Filter by file type, size, and dimensions
@@ -27,18 +45,18 @@ Image Crawler was created to provide a simple, yet powerful and unified interfac
 
 - **Web Mode**: Download images from multiple sources
   - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, and Wikimedia.
-  - Search by keyword with advanced filters
-  - Safe search (enabled by default)
-  - Headless browser mode
+  - Search by keyword with advanced filters (some providers)
+  - Safe search (enabled by default where applicable)
+  - Headless browser mode option for web crawling (configurable in CLI, default in GUI for some operations)
 
 ## Installation
 
 ### Prerequisites
 
-1. **Windows 10 or later** - The application is tested on Windows 10 and above
+1. **Windows 10 or later, macOS, or Linux** - The application is cross-platform.
 2. **Node.js 18+** (v18.17.0 or later recommended for full ES modules support)
 
-### Automatic Installation (Recommended)
+### For CLI Usage (Global Install)
 
 Run the following command to install the application and all required dependencies, including Playwright browsers:
 
@@ -59,6 +77,32 @@ Or use with npx without global installation:
 npx image-crawler
 # The first run will prompt to install Playwright browsers if needed
 ```
+
+### For Electron GUI Usage (Running from Source/Development)
+
+If you want to run the Electron GUI application directly from the source code (e.g., for development or to use the latest unreleased features):
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/rupertgermann/image-crawler.git
+    cd image-crawler
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+    This will install Electron, Playwright, and other necessary packages.
+
+3.  **Install Playwright browsers (if not already installed or if you want to ensure they are up-to-date for this project):**
+    ```bash
+    npx playwright install --with-deps
+    ```
+
+4.  **Run the Electron application:**
+    ```bash
+    npm run electron:start
+    ```
 
 ### Manual Installation (if automatic fails)
 
@@ -105,7 +149,27 @@ If you encounter issues during installation:
 
 ## Usage
 
-Run without any commands to start in interactive mode:
+The application can be used via its Command Line Interface (CLI) or through the Electron-based Graphical User Interface (GUI).
+
+### Electron GUI Mode
+
+If you've followed the steps for "For Electron GUI Usage (Running from Source/Development)", you can launch the application with:
+
+```bash
+npm run electron:start
+```
+
+Once launched, the GUI provides an intuitive way to:
+- Select the desired mode (Local Scan or Web Download).
+- Configure options specific to the chosen mode (e.g., source/output directories, search queries, filters).
+- Start and stop the crawling process using dedicated buttons.
+- Monitor progress and view logs in the integrated log area.
+- Save or clear logs as needed.
+- Toggle between light and dark themes.
+
+### CLI Mode
+
+Run without any commands to start in interactive CLI mode:
 
 ```bash
 image-crawler
