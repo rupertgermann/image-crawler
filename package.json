@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Cross-platform image collection tool with local and web crawling capabilities",
-  "main": "electron/main.js",
+  "main": "electron/main.cjs",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js interactive",
