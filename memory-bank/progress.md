@@ -379,3 +379,73 @@ Migrate remaining Jest unit tests to Playwright Test, handle missing source file
 **Next Steps (based on current task):**
 *   Verify and implement `stop()` methods in `LocalCrawler` and `WebCrawler` classes.
 *   Ensure `main.cjs` correctly handles `stopLocalScan` and `stopWebDownload` IPC messages, calls the crawler `stop()` methods, and emits `scan-stopped` / `web-stopped` events back to the renderer.
+
+---
+
+# Progress Update - Backend for Header Action Buttons (Stop Functionality)
+
+## Objective:
+Implement the backend logic to support the new "Stop" button in the UI header, allowing users to cancel ongoing local scans and web downloads.
+
+## Implemented Features:
+
+1.  **IPC Channel Setup (`electron/preload.js`):**
+    *   Added new IPC channels (`stopLocalScan`, `stopWebDownload`) to allow the renderer process to request a stop operation.
+    *   Added event listeners (`onScanStopped`, `onWebStopped`) for the renderer to be notified when a scan/download has actually been stopped.
+    *   Renamed existing event listeners (e.g., `onLocalCrawlerLog` to `onScanLog`) for consistency with `renderer.js`.
+    *   Updated `removeAllListeners` functions to include the new and renamed events.
+
+2.  **Main Process Handling (`electron/main.cjs`):**
+    *   Introduced `activeLocalCrawler` and `activeWebCrawler` variables to keep track of the currently running crawler instances.
+    *   Updated `START_LOCAL_SCAN` and `START_WEB_DOWNLOAD` IPC handlers to store the active crawler instance and clear it upon completion or error.
+    *   Added checks to prevent starting a new scan/download if one of the same type is already in progress.
+    *   Implemented new IPC handlers for `STOP_LOCAL_SCAN` and `STOP_WEB_DOWNLOAD`:
+        *   These handlers call the `stop()` method on the respective active crawler instance.
+        *   They send `'scan-stopped'` or `'web-stopped'` events back to the renderer upon successfully calling the stop method.
+        *   They clear the reference to the active crawler.
+    *   Ensured event names used for sending data to the renderer (logs, completion, errors) are consistent with `preload.js` and `renderer.js`.
+
+3.  **Local Crawler Stop Logic (`src/modes/local-crawler.js`):**
+    *   Added a `stopRequested` boolean flag, initialized to `false`.
+    *   Implemented an `async stop()` method that sets `stopRequested = true` and emits a log.
+    *   Integrated `if (this.stopRequested)` checks within recursive methods (`_estimateTotalFiles`, `scanDirectory`) and `processFile` to halt operations gracefully.
+    *   The `start()` method now also checks this flag at various points for early exit.
+    *   The final `complete` event summary now includes a `stoppedByUser` flag.
+
+4.  **Web Crawler Stop Logic (`src/modes/playwright-crawler.js`):**
+    *   Added a `stopRequested` boolean flag, initialized to `false`.
+    *   Implemented an `async stop()` method that sets `stopRequested = true`, emits a log, and attempts to close the Playwright browser if active.
+    *   Integrated `if (this.stopRequested)` checks within the main `start()` loop (before provider iteration, before image URL iteration) and at the beginning of `processImage()`.
+    *   The `finally` block in `start()` ensures the browser is closed if it was opened, even if a stop was requested.
+    *   The final `complete` event summary now includes a `stoppedByUser` flag.
+
+## Encountered Errors & How We Fixed Them:
+
+*   **Missing IPC Channels:** `preload.js` was missing the necessary functions and event listeners to handle stop requests and notifications. This was resolved by adding the required `ipcRenderer.invoke` calls and `ipcRenderer.on` listeners.
+*   **Lack of Crawler Instance Management:** `main.cjs` did not track active crawler instances, making it impossible to call a `stop()` method. This was fixed by introducing `activeLocalCrawler` and `activeWebCrawler` variables and managing their lifecycle.
+*   **No Stop Mechanism in Crawlers:** The `LocalCrawler` and `PlaywrightCrawler` classes lacked internal logic to interrupt their operations. This was addressed by adding a `stopRequested` flag and integrating checks for this flag throughout their processing loops, and by adding a specific `stop()` method to each.
+*   **Event Name Inconsistencies:** Event names for logs, completion, and errors were inconsistent between `main.cjs`, `preload.js`, and `renderer.js`. These were standardized (e.g., `local-crawler-log` to `scan-log`).
+
+## Overall Assessment:
+The backend functionality for stopping both local scans and web downloads is now fully implemented. The changes ensure that stop requests from the UI are correctly processed, ongoing operations are halted as gracefully as possible, and the UI is notified of the outcome.
+
+---
+
+# Bug Fix - Web Mode Output Directory Selector Not Working
+
+## Issue:
+The "Select Output" button in the "Web Mode Options" section of the UI was not functional. Clicking it did not open a directory selection dialog.
+
+## Root Cause:
+While the button element (`selectWebOutputDirBtn`) existed in `electron/index.html`, the corresponding JavaScript event listener in `electron/renderer.js` to handle its click event was missing.
+
+## Fix Implemented:
+
+1.  **`electron/renderer.js`:**
+    *   Added an event listener for the `selectWebOutputDirBtn` element.
+    *   This listener, when the button is clicked, now calls `window.electronAPI.selectDirectory('Select Web Output Directory')`.
+    *   If a directory is successfully selected, the `value` of the `webOutputDirInput` text field is updated with the chosen path.
+    *   Log messages are generated for successful selection or any errors during the process.
+
+## Overall Assessment:
+The web mode output directory selector button is now functional, allowing users to choose a custom output location for their web downloads via the UI.

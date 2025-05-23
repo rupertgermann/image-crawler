@@ -245,6 +245,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // --- Event Listener for Web Mode Output Directory Selection ---
+    const selectWebOutputDirBtn = document.getElementById('selectWebOutputDirBtn');
+    // webOutputDirInput is already defined
+    if (selectWebOutputDirBtn && webOutputDirInput && window.electronAPI) {
+        selectWebOutputDirBtn.addEventListener('click', async () => {
+            try {
+                const directoryPath = await window.electronAPI.selectDirectory('Select Web Output Directory');
+                if (directoryPath) {
+                    webOutputDirInput.value = directoryPath;
+                    logMessage(`Selected web output directory: ${directoryPath}`);
+                }
+            } catch (error) {
+                logMessage(`Error selecting web output directory: ${error.message}`);
+            }
+        });
+    }
+
     // Event listener for the unified action button
     if (actionButton && window.electronAPI) {
         actionButton.addEventListener('click', async () => {

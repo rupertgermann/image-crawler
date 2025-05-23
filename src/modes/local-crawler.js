@@ -68,13 +68,26 @@ class LocalCrawler extends EventEmitter {
     this.errorFiles = 0;
     this.totalFilesToScan = 0; // Will be estimated first for progress
     this.seenHashes = new Set();
+    this.stopRequested = false; // Added for stop functionality
+  }
+
+  async stop() {
+    this.stopRequested = true;
+    this.emit('log', 'info', 'Stop request received. Attempting to halt scanning...');
+    // The actual stopping happens due to checks in scanDirectory/processFile.
+    // This method can resolve quickly.
   }
 
   async _estimateTotalFiles(dir) {
     let count = 0;
+    if (this.stopRequested) return 0; // Check at the beginning
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
+        if (this.stopRequested) {
+          this.emit('log', 'debug', 'File estimation stopped by request mid-directory.');
+          return count; // Return current count if stopped
+        }
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) {
           count += await this._estimateTotalFiles(fullPath);
@@ -98,6 +111,12 @@ class LocalCrawler extends EventEmitter {
     try {
       this.emit('log', 'info', 'Starting local crawler...');
       this.emit('log', 'debug', `Effective options: ${JSON.stringify(this.options, null, 2)}`);
+
+      if (this.stopRequested) {
+        this.emit('log', 'info', 'Scan aborted before start due to stop request.');
+        this.emit('complete', { status: 'stopped', message: 'Scan aborted before start.'});
+        return;
+      }
 
       const sourceValidation = await validators.validateDirectory(this.options.sourceDir);
       if (!sourceValidation.valid) {
@@ -142,6 +161,12 @@ class LocalCrawler extends EventEmitter {
       await scanHashes(this.options.outputDir);
       this.emit('log', 'info', `Found ${this.seenHashes.size} existing file hashes.`);
 
+      if (this.stopRequested) {
+        this.emit('log', 'info', 'Scan aborted before directory scan due to stop request.');
+        this.emit('complete', { status: 'stopped', message: 'Scan aborted before directory scan.'});
+        return;
+      }
+
       this.emit('log', 'info', `Scanning source directory: ${this.options.sourceDir}`);
       await this.scanDirectory(this.options.sourceDir);
 
@@ -151,9 +176,15 @@ class LocalCrawler extends EventEmitter {
         copiedImages: this.fileCount,
         skippedFiles: this.skippedFiles,
         errorCount: this.errorFiles,
-        maxFilesReached: this.fileCount >= this.options.maxDownloads
+        maxFilesReached: this.fileCount >= this.options.maxDownloads,
+        stoppedByUser: this.stopRequested // Add status if stopped
       };
-      this.emit('log', 'info', `Crawling completed. Summary: ${JSON.stringify(summary)}`);
+
+      if (this.stopRequested) {
+        this.emit('log', 'info', `Crawling stopped by user request. Summary: ${JSON.stringify(summary)}`);
+      } else {
+        this.emit('log', 'info', `Crawling completed. Summary: ${JSON.stringify(summary)}`);
+      }
       this.emit('complete', summary);
       return summary;
 
@@ -167,9 +198,17 @@ class LocalCrawler extends EventEmitter {
   async scanDirectory(dir) {
     try {
       if (this.fileCount >= this.options.maxDownloads) return;
+      if (this.stopRequested) { // Check at the beginning of each directory scan
+        this.emit('log', 'info', `Scan of directory ${dir} aborted due to stop request.`);
+        return;
+      }
       
       const entries = await fs.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
+        if (this.stopRequested) { // Check before processing each entry
+          this.emit('log', 'info', `Stopping scan in ${dir} due to request.`);
+          return;
+        }
         if (this.fileCount >= this.options.maxDownloads) {
           this.emit('log', 'info', `Maximum file limit of ${this.options.maxDownloads} reached, stopping scan.`);
           return;
@@ -199,6 +238,10 @@ class LocalCrawler extends EventEmitter {
   }
 
   async processFile(filePath) {
+    if (this.stopRequested) { // Check at the beginning of file processing
+      this.emit('log', 'debug', `Skipping processing of ${filePath} due to stop request.`);
+      return;
+    }
     try {
       const ext = path.extname(filePath).toLowerCase().substring(1);
       if (this.options.extensions && this.options.extensions.length > 0 && !this.options.extensions.includes(ext)) {

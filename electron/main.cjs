@@ -10,6 +10,9 @@ const fs = require('fs-extra');
     let LocalCrawler;
     let PlaywrightCrawler;
 
+    let activeLocalCrawler = null;
+    let activeWebCrawler = null;
+
     try {
         // Dynamic import for config.js (ES Module)
         const configModule = await import('../src/utils/config.js');
@@ -185,24 +188,67 @@ const fs = require('fs-extra');
         const sender = event.sender;
         if (!LocalCrawler) {
             Logger.error('LocalCrawler not loaded.');
+            sender.send('scan-error', 'LocalCrawler module not available.'); // Use consistent event
             return { success: false, message: 'LocalCrawler not available.' };
+        }
+        if (activeLocalCrawler) {
+            Logger.warn('Local scan already in progress.');
+            sender.send('scan-error', 'Another local scan is already in progress.');
+            return { success: false, message: 'Local scan already in progress.' };
         }
         try {
             const crawler = new LocalCrawler(options);
-            crawler.on('progress', (data) => {
-                sender.send('local-crawler-log', data);
+            activeLocalCrawler = crawler; // Store reference
+
+            crawler.on('log', (level, message) => { // Assuming crawler emits 'log' with level and message
+                sender.send('scan-log', level, message);
+            });
+            crawler.on('progress', (data) => { // Example: if progress is a specific event
+                // Potentially map to a 'scan-log' type event or a new specific event if needed
+                sender.send('scan-log', 'info', `Progress: ${data.processed}/${data.total}`);
             });
             crawler.on('complete', (data) => {
-                sender.send('local-crawler-complete', data);
+                sender.send('scan-complete', data);
+                activeLocalCrawler = null; // Clear reference
             });
             crawler.on('error', (error) => {
-                sender.send('local-crawler-error', error);
+                // Ensure error is a string or simple object for IPC
+                const errorMessage = typeof error === 'string' ? error : (error.message || 'Unknown local scan error');
+                sender.send('scan-error', errorMessage);
+                activeLocalCrawler = null; // Clear reference
             });
             await crawler.start();
-            return { success: true };
+            Logger.info('Local scan initiated.');
+            return { success: true, message: 'Local scan initiated.' };
         } catch (error) {
-            Logger.error(`Error starting local scan: ${error.message}`, error);
-            return { success: false, message: error.message };
+            Logger.error('Error starting local scan:', error);
+            const errorMessage = typeof error === 'string' ? error : (error.message || 'Failed to start local scan.');
+            sender.send('scan-error', errorMessage);
+            activeLocalCrawler = null;
+            return { success: false, message: errorMessage };
+        }
+    });
+
+    ipcMain.handle('STOP_LOCAL_SCAN', async (event) => {
+        if (activeLocalCrawler) {
+            try {
+                Logger.info('Attempting to stop local scan...');
+                await activeLocalCrawler.stop();
+                Logger.info('Local scan stop method called.');
+                // The 'scan-stopped' event will be sent by the crawler itself or after stop() resolves
+                // For now, let's assume the crawler's stop method is effective and it will emit 'stopped' or similar
+                // or we can send it from here if stop() is guaranteed to terminate processing.
+                sender.send('scan-stopped'); // Send confirmation to renderer
+                activeLocalCrawler = null; // Clear reference after stop attempt
+                return { success: true, message: 'Local scan stop requested.' };
+            } catch (error) {
+                Logger.error('Error stopping local scan:', error);
+                sender.send('scan-error', error.message || 'Failed to stop local scan.');
+                return { success: false, message: error.message || 'Failed to stop local scan.' };
+            }
+        } else {
+            Logger.warn('No active local scan to stop.');
+            return { success: false, message: 'No active local scan to stop.' };
         }
     });
 
@@ -211,24 +257,59 @@ const fs = require('fs-extra');
         const sender = event.sender;
         if (!PlaywrightCrawler) {
             Logger.error('PlaywrightCrawler not loaded.');
+            sender.send('web-error', 'PlaywrightCrawler module not available.'); // Use consistent event
             return { success: false, message: 'PlaywrightCrawler not available.' };
+        }
+        if (activeWebCrawler) {
+            Logger.warn('Web download already in progress.');
+            sender.send('web-error', 'Another web download is already in progress.');
+            return { success: false, message: 'Web download already in progress.' };
         }
         try {
             const crawler = new PlaywrightCrawler(options);
-            crawler.on('progress', (data) => {
-                sender.send('web-crawler-log', data);
+            activeWebCrawler = crawler; // Store reference
+
+            crawler.on('log', (level, message) => { // Assuming crawler emits 'log' with level and message
+                sender.send('web-log', level, message);
             });
             crawler.on('complete', (data) => {
-                sender.send('web-crawler-complete', data);
+                sender.send('web-complete', data);
+                activeWebCrawler = null; // Clear reference
             });
             crawler.on('error', (error) => {
-                sender.send('web-crawler-error', error);
+                const errorMessage = typeof error === 'string' ? error : (error.message || 'Unknown web download error');
+                sender.send('web-error', errorMessage);
+                activeWebCrawler = null; // Clear reference
             });
             await crawler.start();
-            return { success: true };
+            Logger.info('Web download initiated.');
+            return { success: true, message: 'Web download initiated.' };
         } catch (error) {
-            Logger.error(`Error starting web download: ${error.message}`, error);
-            return { success: false, message: error.message };
+            Logger.error('Error starting web download:', error);
+            const errorMessage = typeof error === 'string' ? error : (error.message || 'Failed to start web download.');
+            sender.send('web-error', errorMessage);
+            activeWebCrawler = null;
+            return { success: false, message: errorMessage };
+        }
+    });
+
+    ipcMain.handle('STOP_WEB_DOWNLOAD', async (event) => {
+        if (activeWebCrawler) {
+            try {
+                Logger.info('Attempting to stop web download...');
+                await activeWebCrawler.stop();
+                Logger.info('Web download stop method called.');
+                sender.send('web-stopped'); // Send confirmation to renderer
+                activeWebCrawler = null; // Clear reference after stop attempt
+                return { success: true, message: 'Web download stop requested.' };
+            } catch (error) {
+                Logger.error('Error stopping web download:', error);
+                sender.send('web-error', error.message || 'Failed to stop web download.');
+                return { success: false, message: error.message || 'Failed to stop web download.' };
+            }
+        } else {
+            Logger.warn('No active web download to stop.');
+            return { success: false, message: 'No active web download to stop.' };
         }
     });
 

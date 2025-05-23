@@ -14,17 +14,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Local Crawler
     startLocalScan: (options) => ipcRenderer.invoke('START_LOCAL_SCAN', options),
-    onLocalCrawlerLog: (callback) => ipcRenderer.on('local-crawler-log', (event, ...args) => callback(...args)),
-    removeAllLocalCrawlerListeners: () => ipcRenderer.removeAllListeners('local-crawler-log'),
-    onLocalCrawlerComplete: (callback) => ipcRenderer.on('local-crawler-complete', (event, ...args) => callback(...args)),
-    onLocalCrawlerError: (callback) => ipcRenderer.on('local-crawler-error', (event, ...args) => callback(...args)),
+    stopLocalScan: () => ipcRenderer.invoke('STOP_LOCAL_SCAN'),
+    onScanLog: (callback) => ipcRenderer.on('scan-log', (event, ...args) => callback(...args)),
+    onScanComplete: (callback) => ipcRenderer.on('scan-complete', (event, ...args) => callback(...args)),
+    onScanError: (callback) => ipcRenderer.on('scan-error', (event, ...args) => callback(...args)),
+    onScanStopped: (callback) => ipcRenderer.on('scan-stopped', (event, ...args) => callback(...args)),
+    removeAllLocalCrawlerListeners: () => {
+        ipcRenderer.removeAllListeners('scan-log');
+        ipcRenderer.removeAllListeners('scan-complete');
+        ipcRenderer.removeAllListeners('scan-error');
+        ipcRenderer.removeAllListeners('scan-stopped');
+    },
 
     // Web Crawler
     startWebDownload: (options) => ipcRenderer.invoke('START_WEB_DOWNLOAD', options),
-    onWebCrawlerLog: (callback) => ipcRenderer.on('web-crawler-log', (event, ...args) => callback(...args)),
-    removeAllWebCrawlerListeners: () => ipcRenderer.removeAllListeners('web-crawler-log'),
-    onWebCrawlerComplete: (callback) => ipcRenderer.on('web-crawler-complete', (event, ...args) => callback(...args)),
-    onWebCrawlerError: (callback) => ipcRenderer.on('web-crawler-error', (event, ...args) => callback(...args)),
+    stopWebDownload: () => ipcRenderer.invoke('STOP_WEB_DOWNLOAD'),
+    onWebLog: (callback) => ipcRenderer.on('web-log', (event, ...args) => callback(...args)),
+    onWebComplete: (callback) => ipcRenderer.on('web-complete', (event, ...args) => callback(...args)),
+    onWebError: (callback) => ipcRenderer.on('web-error', (event, ...args) => callback(...args)),
+    onWebStopped: (callback) => ipcRenderer.on('web-stopped', (event, ...args) => callback(...args)),
+    removeAllWebCrawlerListeners: () => {
+        ipcRenderer.removeAllListeners('web-log');
+        ipcRenderer.removeAllListeners('web-complete');
+        ipcRenderer.removeAllListeners('web-error');
+        ipcRenderer.removeAllListeners('web-stopped');
+    },
 
     // App Logging from Main Process
     onAppLog: (callback) => ipcRenderer.on('app-log', (event, ...args) => callback(...args)),

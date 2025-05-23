@@ -54,11 +54,32 @@ class PlaywrightCrawler extends EventEmitter {
     this.page = null;
     this.context = null;
     this.providerSummaries = []; // To store per-provider stats
+    this.stopRequested = false; // Added for stop functionality
+  }
+
+  async stop() {
+    this.stopRequested = true;
+    this.emit('log', 'info', 'Stop request received for web crawler. Attempting to halt operations...');
+    if (this.browser && this.browser.isConnected()) {
+        this.emit('log', 'info', 'Closing browser due to stop request...');
+        try {
+            await this.browser.close();
+            this.emit('log', 'info', 'Browser closed successfully by stop request.');
+        } catch (e) {
+            this.emit('log', 'error', `Error closing browser during stop: ${e.message}`);
+        }
+    }
   }
 
   async start() {
     this.emit('log', 'info', 'Starting Playwright web crawler...');
     try {
+      if (this.stopRequested) {
+        this.emit('log', 'info', 'Web crawl aborted before operations due to stop request.');
+        this.emit('complete', { status: 'stopped', downloaded: 0, skipped: 0, errors: 0, providerSummaries: [], stoppedByUser: true });
+        return { success: false, downloaded: 0, skipped: 0, errors: 0, stoppedByUser: true };
+      }
+
       // Initialize provider registry, passing this crawler as the emitter for providers
       await this.providerRegistry.initialize(this); 
       const activeProviders = this.providerRegistry.getActiveProviders();
@@ -103,7 +124,17 @@ class PlaywrightCrawler extends EventEmitter {
       this.page = await this.context.newPage();
       this.emit('log', 'info', `Browser launched. Max download limit: ${this.totalDownloadLimit}`);
 
+      if (this.stopRequested) { // Check after browser launch, before provider loop
+        this.emit('log', 'info', 'Web crawl aborted after browser launch due to stop request.');
+        // Browser will be closed in finally block
+        return; // Exit early, finally block will handle cleanup
+      }
+
       for (const providerInstance of activeProviders) {
+        if (this.stopRequested) {
+          this.emit('log', 'info', 'Stopping provider processing loop due to stop request.');
+          break;
+        }
         if (this.downloadedCount >= this.totalDownloadLimit) {
           this.emit('log', 'info', `Global download limit (${this.totalDownloadLimit}) reached. Stopping further providers.`);
           break;
@@ -137,6 +168,10 @@ class PlaywrightCrawler extends EventEmitter {
           this.emit('log', 'info', `Found ${imageUrls.length} potential image URLs from ${providerName}. Processing...`);
 
           for (const imageUrl of imageUrls) {
+            if (this.stopRequested) {
+              this.emit('log', 'info', `Stopping image processing for ${providerName} due to stop request.`);
+              break;
+            }
             if (this.downloadedCount >= this.totalDownloadLimit) {
               this.emit('log', 'info', `Global download limit reached while processing images from ${providerName}.`);
               break;
@@ -156,7 +191,7 @@ class PlaywrightCrawler extends EventEmitter {
       this.emit('log', 'error', `Fatal error during web crawling: ${error.message}`);
       this.emit('error', { message: `Crawling failed: ${error.message}`, details: error.stack });
     } finally {
-      if (this.browser) {
+      if (this.browser && this.browser.isConnected()) { // Check isConnected before closing
         try {
           await this.browser.close();
           this.emit('log', 'info', 'Browser closed.');
@@ -165,13 +200,23 @@ class PlaywrightCrawler extends EventEmitter {
         }
       }
     }
-    const summary = { downloaded: this.downloadedCount, skipped: this.skippedCount, errors: this.errorCount, providerSummaries: this.providerSummaries };
+    const summary = { 
+      downloaded: this.downloadedCount, 
+      skipped: this.skippedCount, 
+      errors: this.errorCount, 
+      providerSummaries: this.providerSummaries,
+      stoppedByUser: this.stopRequested // Add status if stopped
+    };
     this.emit('log', 'info', `Web crawling complete. Summary: ${JSON.stringify(summary)}`);
     this.emit('complete', summary);
     return summary; // Return summary
   }
 
   async processImage(imageUrl, source, providerInstance) {
+    if (this.stopRequested) {
+      this.emit('log', 'debug', `Skipping processing of image ${imageUrl} due to stop request.`);
+      return false;
+    }
     if (!validators.validateUrl(imageUrl).valid) {
       this.emit('log', 'warn', `Skipping invalid URL from ${source}: ${imageUrl}`);
       this.skippedCount++;
