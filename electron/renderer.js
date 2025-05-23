@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateVisibleOptions() {
         const selectedMode = document.querySelector('input[name="mode"]:checked').value;
         if (selectedMode === 'local') {
-            localOptions.style.display = 'block';
-            webOptions.style.display = 'none';
+            localOptions.classList.add('active');
+            webOptions.classList.remove('active');
         } else if (selectedMode === 'web') {
-            localOptions.style.display = 'none';
-            webOptions.style.display = 'block';
+            localOptions.classList.remove('active');
+            webOptions.classList.add('active');
         }
     }
 
@@ -32,6 +32,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     logMessage('Renderer process initialized.');
+
+    // --- Dark Mode Toggle Implementation ---
+    const themeToggle = document.getElementById('themeToggle');
+    const lightIcon = document.getElementById('lightIcon');
+    const darkIcon = document.getElementById('darkIcon');
+
+    function updateThemeIcons(theme) {
+        if (theme === 'dark') {
+            lightIcon.style.display = 'none';
+            darkIcon.style.display = 'inline';
+        } else {
+            lightIcon.style.display = 'inline';
+            darkIcon.style.display = 'none';
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcons(newTheme);
+        
+        logMessage(`Theme switched to ${newTheme} mode`);
+    }
+
+    // Initialize theme icons based on current theme
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    updateThemeIcons(currentTheme);
+
+    // Add event listener for theme toggle
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+
+    // Listen for system theme changes
+    if (window.matchMedia) {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        mediaQuery.addEventListener('change', (e) => {
+            // Only auto-switch if user hasn't manually set a preference
+            if (!localStorage.getItem('theme')) {
+                const systemTheme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', systemTheme);
+                updateThemeIcons(systemTheme);
+                logMessage(`Theme auto-switched to ${systemTheme} mode (system preference)`);
+            }
+        });
+    }
 
     // --- Global Config and UI Population ---
     const globalDefaultOutputDirInput = document.getElementById('globalDefaultOutputDir');

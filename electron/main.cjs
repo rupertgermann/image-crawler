@@ -63,8 +63,9 @@ const fs = require('fs-extra');
     // Existing main process code, now using dynamically imported modules
     function createWindow () {
         const mainWindow = new BrowserWindow({
-            width: 1000, // Increased width
-            height: 750, // Increased height
+            width: 1200, // Increased width for better space efficiency
+            height: 900, // Increased height for better space efficiency
+            backgroundColor: '#ffffff', // Better font rendering as per Electron best practices
             webPreferences: {
                 preload: path.join(__dirname, 'preload.js'),
                 nodeIntegration: false, // is false by default
