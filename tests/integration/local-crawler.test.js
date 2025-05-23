@@ -1,3 +1,4 @@
+import { test, expect, describe } from '@playwright/test';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,7 +12,7 @@ describe('LocalCrawler Integration Tests', () => {
   let outputDir;
   let crawler;
 
-  beforeAll(async () => {
+  test.beforeAll(async () => {
     // Create test directory structure
     testDir = path.join(__dirname, '..', '..', 'test-data', 'local-crawler');
     outputDir = path.join(testDir, 'output');
@@ -28,12 +29,12 @@ describe('LocalCrawler Integration Tests', () => {
     await fs.writeFile(path.join(testDir, 'subdir', 'test4.jpg'), 'test');
   });
 
-  afterAll(async () => {
+  test.afterAll(async () => {
     // Clean up test directories
     await fs.remove(testDir);
   });
 
-  beforeEach(() => {
+  test.beforeEach(() => {
     // Create a new crawler instance for each test
     crawler = new LocalCrawler({
       sourceDir: testDir,
@@ -47,7 +48,7 @@ describe('LocalCrawler Integration Tests', () => {
     });
   });
 
-  it('should find and copy image files', async () => {
+  test('should find and copy image files', async () => {
     const results = await crawler.start();
     
     // Verify the correct number of images were found
@@ -64,7 +65,7 @@ describe('LocalCrawler Integration Tests', () => {
     expect(subdirFiles).toContain('test4.jpg');
   });
 
-  it('should respect file type filters', async () => {
+  test('should respect file type filters', async () => {
     crawler.options.fileTypes = ['jpg'];
     
     const results = await crawler.start();
@@ -78,7 +79,7 @@ describe('LocalCrawler Integration Tests', () => {
     expect(outputFiles).not.toContain('test2.png');
   });
 
-  it('should respect the maxFiles limit', async () => {
+  test('should respect the maxFiles limit', async () => {
     crawler.options.maxFiles = 2;
     
     const results = await crawler.start();
@@ -88,9 +89,9 @@ describe('LocalCrawler Integration Tests', () => {
     expect(results.copied).toBe(2);
   });
 
-  it('should handle non-existent source directory', async () => {
+  test('should handle non-existent source directory', async () => {
     crawler.options.sourceDir = path.join(testDir, 'nonexistent');
     
-    await expect(crawler.start()).rejects.toThrow();
+    await expect(async () => await crawler.start()).rejects.toThrow();
   });
 });

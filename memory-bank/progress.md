@@ -313,3 +313,36 @@ feat: Enable Electron main process to load ES Modules via dynamic import
 - User to delete `jest.config.cjs`.
 - User to run `npm install`.
 - User to run `npm test` to execute tests with Playwright Test and verify the migration.
+
+---
+
+# Progress Update - Session: Migrating Remaining Unit Tests to Playwright (file-dialog, image-processor, logger)
+
+## Objective:
+Migrate remaining Jest unit tests to Playwright Test, handle missing source files, and prepare for a full test run.
+
+## Key Features Modified/Tasks Completed:
+
+1.  **`tests/unit/file-dialog.test.js` Conversion:**
+    *   Successfully converted from Jest to Playwright Test.
+    *   Manually mocked `child_process.exec` by replacing the module's function and restoring it in `beforeEach`/`afterEach`.
+    *   Continued to mock `process.platform` by directly modifying `process.platform` and restoring it.
+
+2.  **`tests/unit/image-processor.test.js` Handling:**
+    *   Identified that the corresponding source file (`src/utils/image-processor.js`) was missing after multiple checks (`list_dir`, `find_by_name`).
+    *   Based on user confirmation, deleted the orphaned test file `tests/unit/image-processor.test.js`.
+
+3.  **`tests/unit/logger.test.js` Conversion:**
+    *   Successfully converted from Jest to Playwright Test.
+    *   Manually spied on `console` methods (log, error, warn, info, debug) by replacing them with custom spy functions and restoring originals in `beforeEach`/`afterEach`.
+
+## Encountered Errors/Challenges & Fixes:
+
+*   **Missing `image-processor.js` Source File:** The primary challenge was the missing source code for `image-processor.test.js`. This was resolved by confirming the file's absence and deleting the test upon user request.
+*   **Tool Usage Error:** Incorrectly attempted to use `write_to_file` to append to `progress.md`, which failed as the file exists. This will be corrected by using `edit_file` for appending.
+
+## Next Steps:
+
+*   Run all Playwright tests using `npm test` to verify the complete migration of all test files.
+*   Address any failures from the test run.
+*   Update `project-status.md` at the end of the session.
