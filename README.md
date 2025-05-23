@@ -450,6 +450,21 @@ npm test
 
 Contributions are welcome! Whether it's reporting a bug, suggesting a feature, or submitting a pull request, your help is appreciated.
 
+### Development Documentation
+
+For developers working on the codebase, please review the following documentation:
+
+- **[Technical Debt Improvement Plan](docs/technical-debt-improvement-plan.md)**: Comprehensive analysis of current technical debt and improvement strategies
+- **[Technical Debt Task List](docs/technical-debt-tasklist.md)**: Detailed, actionable task breakdown for addressing technical debt (17 main tasks, 55 subtasks)
+- **Memory Bank**: Project context and patterns documentation in `memory-bank/` directory
+
+The technical debt documentation identifies critical issues and provides a roadmap for:
+- **Phase 1**: Critical fixes (provider registry, browser cleanup, configuration naming)
+- **Phase 2**: Performance optimizations (hash caching for 70-90% startup time reduction, memory optimization)
+- **Phase 3**: Code quality improvements (error handling, validation, maintainability)
+
+All improvements maintain 100% backward compatibility and preserve existing functionality.
+
 ### Reporting Bugs
 
 If you find a bug, please open an issue on GitHub and provide detailed steps to reproduce it. Include information about your OS, Node.js version, and the command you ran.
@@ -467,6 +482,8 @@ Have an idea to make Image Crawler better? Open an issue to discuss it. We're al
 5.  Write clear and concise commit messages.
 6.  Push to your branch (`git push origin feature/YourFeature`).
 7.  Open a pull request.
+
+**Note for Contributors**: Before making significant changes, please review the technical debt documentation to understand current improvement priorities and ensure your changes align with the project's technical roadmap.
 
 ## Repository
 
