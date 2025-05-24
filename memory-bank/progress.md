@@ -1,5 +1,31 @@
 # Progress Summary - Image Crawler Project
 
+## Project Status: IN DEVELOPMENT - IMPROVING PROVIDER MANAGEMENT
+
+### Dynamic Provider Dropdown Implementation (2025-05-24)
+**Objective**: Implement a dynamic provider dropdown that automatically discovers and displays all available providers from the filesystem.
+**Achievements**:
+- Removed hardcoded provider ordering from `config.json` and `config.json.example`
+- Added a new IPC handler `GET_AVAILABLE_PROVIDERS` in `main.cjs`
+- Implemented filesystem scanning for provider files in the `src/providers/` directory
+- Updated the renderer to fetch and display providers dynamically
+- Added proper error handling and fallbacks
+- Ensured providers are displayed in alphabetical order
+
+**Technical Details**:
+- Uses `fs/promises` for async filesystem operations
+- Scans the `src/providers/` directory for files matching `*-provider.js` pattern
+- Excludes base provider files like `base-provider.js` and `provider-registry.js`
+- Sorts providers alphabetically by their ID
+- Maintains backward compatibility with existing configuration
+
+**Next Steps**:
+- Test with various provider combinations
+- Consider adding provider metadata for better display names and descriptions
+- Add provider validation to ensure all required methods are implemented
+
+---
+
 ## Project Status: IN DEVELOPMENT - ADDING NEW PROVIDERS
 
 The Image Crawler project is actively being enhanced with new image providers while maintaining its stable core functionality. The application provides both local image scanning and web crawling capabilities across multiple platforms.

@@ -32,22 +32,6 @@
     }
   },
   "providers": {
-    "order": [
-      "google",
-      "pexels",
-      "bing",
-      "flickr",
-      "duckduckgo",
-      "freeimages",
-      "wikimedia",
-      "pixabay",
-      "unsplash",
-      "stocksnap",
-      "shutterstock",
-      "freerangestock",
-      "publicdomainpictures",
-      "reshot"
-    ],
     "google": { "enabled": false, "maxResults": 100 },
     "pexels": { "enabled": true, "maxResults": 30 },
     "bing": {

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs-extra');
+const { readdir } = require('fs/promises');
 
 // Wrap the main process logic in an async IIFE
 (async () => {
@@ -44,6 +45,37 @@ const fs = require('fs-extra');
             debug: (msg) => console.log(`[FALLBACK LOGGER - DEBUG] ${msg}`),
         };
     }
+
+    // Function to get available providers by scanning the providers directory
+    async function getAvailableProviders() {
+        try {
+            const providersDir = path.join(__dirname, '..', 'src', 'providers');
+            const files = await readdir(providersDir);
+            
+            // Filter for provider files (ends with -provider.js)
+            const providerFiles = files.filter(file => 
+                file.endsWith('-provider.js') && 
+                !['base-provider.js', 'provider-registry.js'].includes(file)
+            );
+            
+            // Extract provider IDs and sort alphabetically
+            const providers = providerFiles
+                .map(file => file.replace('-provider.js', ''))
+                .sort((a, b) => a.localeCompare(b));
+                
+            return { success: true, providers };
+        } catch (error) {
+            Logger.error('Error getting available providers:', error);
+            return { 
+                success: false, 
+                message: 'Failed to get available providers',
+                error: error.message 
+            };
+        }
+    }
+    
+    // Expose the function via IPC
+    ipcMain.handle('GET_AVAILABLE_PROVIDERS', getAvailableProviders);
 
     try {
         // Dynamic import for local-crawler.js (ES Module)

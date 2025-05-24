@@ -151,8 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const webFileTypes = config.fileTypes || defaultConfig.fileTypes || ['jpg', 'png'];
             if(webFileTypesInput) webFileTypesInput.value = Array.isArray(webFileTypes) ? webFileTypes.join(',') : webFileTypes;
 
-            // Populate provider dropdowns
-            const providerOrder = defaultConfig.providers?.order || [];
+            // Provider display name mapping
             const providerDisplayNames = {
                 'google': 'Google',
                 'pixabay': 'Pixabay',
@@ -170,40 +169,56 @@ document.addEventListener('DOMContentLoaded', async () => {
                 'shutterstock': 'Shutterstock'
             };
 
-            function populateProviderDropdown(selectElement) {
-                if (!selectElement) return;
+            // Function to populate provider dropdown
+            async function populateProviderDropdown(selectElement) {
+                if (!selectElement) {
+                    return;
+                }
                 
-                // Save the current value
-                const currentValue = selectElement.value;
-                
-                // Clear existing options
-                selectElement.innerHTML = '';
-                
-                // Add 'All' option
-                const allOption = document.createElement('option');
-                allOption.value = 'all';
-                allOption.textContent = 'All Providers';
-                selectElement.appendChild(allOption);
-                
-                // Add each provider from the config
-                providerOrder.forEach(provider => {
-                    const option = document.createElement('option');
-                    option.value = provider;
-                    option.textContent = providerDisplayNames[provider] || provider;
-                    selectElement.appendChild(option);
-                });
-                
-                // Restore the previous value if it still exists
-                if (currentValue && Array.from(selectElement.options).some(opt => opt.value === currentValue)) {
-                    selectElement.value = currentValue;
-                } else if (selectElement.id === 'webProvider') {
-                    // For web provider, use the effective provider or first in the list
-                    selectElement.value = effectiveProvider || (providerOrder[0] || 'all');
-                } else if (selectElement.id === 'globalDefaultWebProvider') {
-                    // For global default, use the effective provider or first in the list
-                    selectElement.value = effectiveProvider || (providerOrder[0] || 'all');
-                } else {
-                    // Default to 'all' if no other option is selected
+                try {
+                    // Save the current value
+                    const currentValue = selectElement.value;
+                    
+                    // Clear existing options
+                    selectElement.innerHTML = '';
+                    
+                    // Add 'All' option
+                    const allOption = document.createElement('option');
+                    allOption.value = 'all';
+                    allOption.textContent = 'All Providers';
+                    selectElement.appendChild(allOption);
+                    
+                    // Get available providers from main process
+                    const result = await window.electronAPI.getAvailableProviders();
+                    
+                    if (result && result.success && Array.isArray(result.providers)) {
+                        // Add each provider from the list (already sorted alphabetically)
+                        result.providers.forEach(provider => {
+                            const option = document.createElement('option');
+                            option.value = provider;
+                            option.textContent = providerDisplayNames[provider] || provider;
+                            selectElement.appendChild(option);
+                        });
+                        
+                        // Determine the default provider value
+                        let defaultProvider = 'all';
+                        if (selectElement.id === 'webProvider' || selectElement.id === 'globalDefaultWebProvider') {
+                            defaultProvider = effectiveProvider || (result.providers[0] || 'all');
+                        }
+                        
+                        // Restore the previous value if it still exists, otherwise use default
+                        if (currentValue && Array.from(selectElement.options).some(opt => opt.value === currentValue)) {
+                            selectElement.value = currentValue;
+                        } else {
+                            selectElement.value = defaultProvider;
+                        }
+                    } else {
+                        logMessage('Warning: Could not load provider list');
+                        selectElement.value = 'all';
+                    }
+                } catch (error) {
+                    console.error('Error populating provider dropdown:', error);
+                    logMessage(`Error loading providers: ${error.message}`);
                     selectElement.value = 'all';
                 }
             }
