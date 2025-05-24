@@ -162,7 +162,6 @@ const consoleMock = require('./utils/console-mock');
 
 ### Environment Variables
 ```bash
-USE_NATIVE_DIALOG=true    # Enable native folder dialogs
 DEBUG=image-crawler:*     # Enable debug logging
 NODE_ENV=development      # Development mode
 ```
