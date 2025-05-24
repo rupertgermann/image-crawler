@@ -99,13 +99,16 @@ class ProviderRegistry {
 
       // Check if it's a Playwright provider defined in the loaded configs
       if (this.playwrightProviderConfigs[name]) {
+        // Capture the specific provider's configuration from the ProviderRegistry instance
+        const specificPlaywrightConfig = this.playwrightProviderConfigs[name];
+
         // Return a new class that extends GenericPlaywrightProvider
         // and is pre-configured with the specific provider's config.
         // The constructor of this ad-hoc class will receive (providerSpecificConfigFromFile, emitter)
-        // and it needs to pass (providerSpecificConfigFromFile, emitter, this.playwrightProviderConfigs[name]) to GenericPlaywrightProvider's constructor.
         return class ConfiguredProvider extends GenericPlaywrightProvider {
           constructor(providerSpecificConfigFromFile, emitter) {
-            super(providerSpecificConfigFromFile, emitter, this.playwrightProviderConfigs[name]);
+            // Use the captured specificPlaywrightConfig here
+            super(providerSpecificConfigFromFile, emitter, specificPlaywrightConfig);
           }
         };
       }
