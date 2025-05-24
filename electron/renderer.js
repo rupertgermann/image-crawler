@@ -435,6 +435,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- IPC Event Handlers --- (no changes to these functions, but they now affect actionButton/stopButton)
     // Helper function to set up common event listeners for local crawler operations
     function setupLocalCrawlerEventListeners(buttonElement, originalButtonText) {
+        // Remove any existing listeners to prevent duplicate log entries
+        window.electronAPI.removeAllLocalCrawlerListeners();
+        
         window.electronAPI.onScanLog((level, message) => {
             logMessage(`[LOCAL SCAN - ${level.toUpperCase()}]: ${message}`);
         });
@@ -471,6 +474,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper function to set up common event listeners for web crawler operations
     function setupWebCrawlerEventListeners(buttonElement, originalButtonText) {
+        // Remove any existing listeners to prevent duplicate log entries and multiple alert dialogs
+        window.electronAPI.removeAllWebCrawlerListeners();
+        
         window.electronAPI.onWebLog((level, message) => {
             logMessage(`[WEB DOWNLOAD - ${level.toUpperCase()}]: ${message}`);
         });
