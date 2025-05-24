@@ -53,6 +53,11 @@ class ProviderRegistry {
         case 'duckduckgo': module = await import('./duckduckgo-provider.js'); break;
         case 'freeimages': module = await import('./freeimages-provider.js'); break;
         case 'wikimedia': module = await import('./wikimedia-provider.js'); break;
+        case 'stocksnap': module = await import('./stocksnap-provider.js'); break;
+        case 'freerangestock': module = await import('./freerangestock-provider.js'); break;
+        case 'publicdomainpictures': module = await import('./publicdomainpictures-provider.js'); break;
+        case 'reshot': module = await import('./reshot-provider.js'); break;
+        case 'shutterstock': module = await import('./shutterstock-provider.js'); break;
         default: throw new Error(`Unknown provider: ${name}`);
       }
       return module.default; // Return the default export from the module

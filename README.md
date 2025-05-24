@@ -41,7 +41,7 @@ Here's a glimpse of the Image Crawler Electron application in action:
   - Deduplicate images by content hash (skips existing files)
 
 - **Web Mode**: Download images from multiple sources
-  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, and Wikimedia.
+  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, FreeRangeStock, PublicDomainPictures.net, Reshot, and Shutterstock (fetches watermarked previews).
   - Search by keyword with advanced filters (some providers)
   - Safe search (enabled by default where applicable)
   - Headless browser mode option for web crawling (configurable in CLI, default in GUI for some operations)
@@ -347,7 +347,7 @@ npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types j
 - `--file-types <types>`: Comma-separated list of file extensions (default: `jpg,jpeg,png,gif,webp`)
 - `--headless`: Run browser in headless mode (default: `true`)
 - `--timeout <ms>`: Browser operation timeout in milliseconds (default: `30000`)
-- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`. Default is 'all' configured providers.
+- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`, `stocksnap`, `shutterstock`. Default is 'all' configured providers.
 
 
 
@@ -364,12 +364,21 @@ Configuration is stored in `config.json` in the current working directory. The f
   "providers": {
     "order": ["google", "unsplash", "pixabay"],
     "google": {
-      "enabled": true,
+      "enabled": false,
       "safeSearch": true
     },
     "unsplash": {
       "enabled": true,
       "apiKey": "your_unsplash_api_key_here"
+    },
+    "stocksnap": {
+      "enabled": true,
+      "maxResults": 25
+    },
+    "shutterstock": {
+      "enabled": true,
+      "maxResults": 20,
+      "apiKey": "YOUR_SHUTTERSTOCK_API_KEY_OR_LEAVE_EMPTY_FOR_PREVIEWS"
     }
   },
   "defaults": {
@@ -391,27 +400,45 @@ A comprehensive template, `config.json.example`, is available in the root of the
 {
   "logLevel": "debug",
   "providers": {
-    "order": ["google", "bing", "unsplash", "pixabay", "flickr"],
+    "order": ["google", "bing", "unsplash", "pixabay", "flickr", "stocksnap", "shutterstock"],
     "google": {
+      "enabled": false,
+      "maxResults": 100
+    },
+    "bing": {
       "enabled": true,
-      "safeSearch": true,
-      "timeout": 60000
+      "maxResults": 30
+      // Add other Bing-specific settings if any
+    },
+    "unsplash": {
+      "enabled": true,
+      "maxResults": 30,
+      "apiKey": "YOUR_UNSPLASH_API_KEY_HERE" // If Unsplash has an API key option
+    },
+    "pixabay": {
+      "enabled": true,
+      "maxResults": 30,
+      "apiKey": "YOUR_PIXABAY_API_KEY_HERE" // If Pixabay has an API key option
     },
     "flickr": {
       "enabled": true,
-      "apiKey": "your_flickr_api_key",
-      "license": "4,5,6,9,10"  // Creative Commons licenses
+      "maxResults": 50,
+      "apiKey": "YOUR_FLICKR_API_KEY"
+    },
+    "stocksnap": {
+      "enabled": true,
+      "maxResults": 25
+    },
+    "shutterstock": {
+      "enabled": true,
+      "maxResults": 20,
+      "apiKey": "YOUR_SHUTTERSTOCK_API_KEY_OR_LEAVE_EMPTY_FOR_PREVIEWS"
     }
-  },
-  "defaults": {
-    "outputDir": "~/Pictures/ImageCrawler",
-    "maxDownloads": 200,
-    "minWidth": 1024,
-    "minHeight": 768,
-    "fileTypes": ["jpg", "jpeg", "png", "webp"],
-    "preserveStructure": true
-  },
-  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    // ... other providers can be added here
+  }
+  // You can also include other top-level settings like "minWidth", "minHeight", etc.
+  // "minWidth": 1024,
+  // "minHeight": 768
 }
 ```
 

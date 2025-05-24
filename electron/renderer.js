@@ -132,7 +132,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const effectiveProvider = config.provider || (defaultConfig.providers ? defaultConfig.providers.order[0] : 'all') || 'all';
 
             if (globalDefaultOutputDirInput) globalDefaultOutputDirInput.value = effectiveOutputDir;
-            if (globalDefaultWebProviderSelect) globalDefaultWebProviderSelect.value = effectiveProvider;
             if (localOutputDirInput) localOutputDirInput.value = effectiveOutputDir;
             if (webOutputDirInput) webOutputDirInput.value = effectiveOutputDir;
             
@@ -152,7 +151,81 @@ document.addEventListener('DOMContentLoaded', async () => {
             const webFileTypes = config.fileTypes || defaultConfig.fileTypes || ['jpg', 'png'];
             if(webFileTypesInput) webFileTypesInput.value = Array.isArray(webFileTypes) ? webFileTypes.join(',') : webFileTypes;
 
-            if(webProviderSelect) webProviderSelect.value = config.provider || effectiveProvider || 'all'; 
+            // Provider display name mapping
+            const providerDisplayNames = {
+                'google': 'Google',
+                'pixabay': 'Pixabay',
+                'unsplash': 'Unsplash',
+                'pexels': 'Pexels',
+                'bing': 'Bing',
+                'flickr': 'Flickr',
+                'duckduckgo': 'DuckDuckGo',
+                'freeimages': 'FreeImages',
+                'wikimedia': 'Wikimedia',
+                'stocksnap': 'StockSnap',
+                'freerangestock': 'FreeRangeStock',
+                'publicdomainpictures': 'PublicDomainPictures',
+                'reshot': 'Reshot',
+                'shutterstock': 'Shutterstock'
+            };
+
+            // Function to populate provider dropdown
+            async function populateProviderDropdown(selectElement) {
+                if (!selectElement) {
+                    return;
+                }
+                
+                try {
+                    // Save the current value
+                    const currentValue = selectElement.value;
+                    
+                    // Clear existing options
+                    selectElement.innerHTML = '';
+                    
+                    // Add 'All' option
+                    const allOption = document.createElement('option');
+                    allOption.value = 'all';
+                    allOption.textContent = 'All Providers';
+                    selectElement.appendChild(allOption);
+                    
+                    // Get available providers from main process
+                    const result = await window.electronAPI.getAvailableProviders();
+                    
+                    if (result && result.success && Array.isArray(result.providers)) {
+                        // Add each provider from the list (already sorted alphabetically)
+                        result.providers.forEach(provider => {
+                            const option = document.createElement('option');
+                            option.value = provider;
+                            option.textContent = providerDisplayNames[provider] || provider;
+                            selectElement.appendChild(option);
+                        });
+                        
+                        // Determine the default provider value
+                        let defaultProvider = 'all';
+                        if (selectElement.id === 'webProvider' || selectElement.id === 'globalDefaultWebProvider') {
+                            defaultProvider = effectiveProvider || (result.providers[0] || 'all');
+                        }
+                        
+                        // Restore the previous value if it still exists, otherwise use default
+                        if (currentValue && Array.from(selectElement.options).some(opt => opt.value === currentValue)) {
+                            selectElement.value = currentValue;
+                        } else {
+                            selectElement.value = defaultProvider;
+                        }
+                    } else {
+                        logMessage('Warning: Could not load provider list');
+                        selectElement.value = 'all';
+                    }
+                } catch (error) {
+                    console.error('Error populating provider dropdown:', error);
+                    logMessage(`Error loading providers: ${error.message}`);
+                    selectElement.value = 'all';
+                }
+            }
+            
+            // Populate both provider dropdowns
+            populateProviderDropdown(webProviderSelect);
+            populateProviderDropdown(globalDefaultWebProviderSelect);
             
             logMessage('All relevant UI fields populated from configuration.');
 
@@ -362,6 +435,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- IPC Event Handlers --- (no changes to these functions, but they now affect actionButton/stopButton)
     // Helper function to set up common event listeners for local crawler operations
     function setupLocalCrawlerEventListeners(buttonElement, originalButtonText) {
+        // Remove any existing listeners to prevent duplicate log entries
+        window.electronAPI.removeAllLocalCrawlerListeners();
+        
         window.electronAPI.onScanLog((level, message) => {
             logMessage(`[LOCAL SCAN - ${level.toUpperCase()}]: ${message}`);
         });
@@ -398,6 +474,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper function to set up common event listeners for web crawler operations
     function setupWebCrawlerEventListeners(buttonElement, originalButtonText) {
+        // Remove any existing listeners to prevent duplicate log entries and multiple alert dialogs
+        window.electronAPI.removeAllWebCrawlerListeners();
+        
         window.electronAPI.onWebLog((level, message) => {
             logMessage(`[WEB DOWNLOAD - ${level.toUpperCase()}]: ${message}`);
         });

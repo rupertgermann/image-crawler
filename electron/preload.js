@@ -43,4 +43,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // App Logging from Main Process
     onAppLog: (callback) => ipcRenderer.on('app-log', (event, ...args) => callback(...args)),
     removeAllAppLogListeners: () => ipcRenderer.removeAllListeners('app-log'),
+    
+    // Provider Management
+    getAvailableProviders: () => ipcRenderer.invoke('GET_AVAILABLE_PROVIDERS'),
 });

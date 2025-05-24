@@ -25,11 +25,11 @@
                 <span class="header__mode-label">Mode:</span>
                 <div class="mode-selection" role="radiogroup" aria-label="Application mode">
                     <label class="mode-option">
-                        <input type="radio" name="mode" value="local" checked>
+                        <input type="radio" name="mode" value="local">
                         <span>Local</span>
                     </label>
                     <label class="mode-option">
-                        <input type="radio" name="mode" value="web">
+                        <input type="radio" name="mode" value="web" checked>
                         <span>Web</span>
                     </label>
                 </div>
@@ -124,16 +124,8 @@
                     <div class="form-group">
                         <label for="webProvider">Image Provider</label>
                         <select id="webProvider" class="select">
-                            <option value="all" selected>All</option>
-                            <option value="pixabay">Pixabay</option>
-                            <option value="unsplash">Unsplash</option>
-                            <option value="google">Google</option>
-                            <option value="bing">Bing</option>
-                            <option value="flickr">Flickr</option>
-                            <option value="wikimedia">Wikimedia</option>
-                            <option value="pexels">Pexels</option>
-                            <option value="freeimages">Freeimages</option>
-                            <option value="duckduckgo">DuckDuckGo</option>
+                            <!-- Options will be populated dynamically by JavaScript -->
+                            <option value="all" selected>Loading providers...</option>
                         </select>
                     </div>
 

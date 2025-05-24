@@ -24,25 +24,7 @@
       "defaultScanPath": "/home/your_username/Pictures"
     }
   },
-  "searchEngines": {
-    "google": {
-      "enabled": true,
-      "maxResults": 100,
-      "safeSearch": true
-    }
-  },
   "providers": {
-    "order": [
-      "google",
-      "pexels",
-      "bing",
-      "flickr",
-      "duckduckgo",
-      "freeimages",
-      "wikimedia",
-      "pixabay",
-      "unsplash"
-    ],
     "google": { "enabled": false, "maxResults": 100 },
     "pexels": { "enabled": true, "maxResults": 30 },
     "bing": {
@@ -72,7 +54,33 @@
     },
     "wikimedia": { "enabled": true, "maxResults": 30 },
     "pixabay": { "enabled": true, "maxResults": 30 },
-    "unsplash": { "enabled": true, "maxResults": 30 }
+    "unsplash": { "enabled": true, "maxResults": 30 },
+    "stocksnap": {
+      "enabled": true,
+      "maxResults": 25,
+      "comment": "Free CC0 images from StockSnap.io"
+    },
+    "shutterstock": {
+      "enabled": true,
+      "maxResults": 20,
+      "apiKey": "YOUR_SHUTTERSTOCK_API_KEY_OR_LEAVE_EMPTY_FOR_PREVIEWS",
+      "comment": "Fetches watermarked previews if no API key. Full API download not yet implemented."
+    },
+    "freerangestock": {
+      "enabled": true,
+      "maxResults": 30,
+      "comment": "Free stock photos from FreeRangeStock.com"
+    },
+    "publicdomainpictures": {
+      "enabled": true,
+      "maxResults": 30,
+      "comment": "Public domain and free stock photos from PublicDomainPictures.net"
+    },
+    "reshot": {
+      "enabled": true,
+      "maxResults": 30,
+      "comment": "Free stock photos from Reshot.com"
+    }
   },
   "logLevel": "INFO"
 }

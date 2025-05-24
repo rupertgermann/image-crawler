@@ -1,5 +1,98 @@
 # Progress Summary - Image Crawler Project
 
+## Project Status: IN DEVELOPMENT - IMPROVING PROVIDER MANAGEMENT
+
+### Dynamic Provider Dropdown Implementation (2025-05-24)
+**Objective**: Implement a dynamic provider dropdown that automatically discovers and displays all available providers from the filesystem.
+**Achievements**:
+- Removed hardcoded provider ordering from `config.json` and `config.json.example`
+- Added a new IPC handler `GET_AVAILABLE_PROVIDERS` in `main.cjs`
+- Implemented filesystem scanning for provider files in the `src/providers/` directory
+- Updated the renderer to fetch and display providers dynamically
+- Added proper error handling and fallbacks
+- Ensured providers are displayed in alphabetical order
+
+**Technical Details**:
+- Uses `fs/promises` for async filesystem operations
+- Scans the `src/providers/` directory for files matching `*-provider.js` pattern
+- Excludes base provider files like `base-provider.js` and `provider-registry.js`
+- Sorts providers alphabetically by their ID
+- Maintains backward compatibility with existing configuration
+
+**Next Steps**:
+- Test with various provider combinations
+- Consider adding provider metadata for better display names and descriptions
+- Add provider validation to ensure all required methods are implemented
+
+---
+
+## Project Status: IN DEVELOPMENT - ADDING NEW PROVIDERS
+
+The Image Crawler project is actively being enhanced with new image providers while maintaining its stable core functionality. The application provides both local image scanning and web crawling capabilities across multiple platforms.
+
+### New Provider: FreeRangeStock (2025-05-24)
+**Objective**: Add support for FreeRangeStock.com as a new image provider
+**Achievements**:
+- Implemented `freerangestock-provider.js` with web scraping support
+- Added configuration options in `config.json` and `config.json.example`
+- Updated README.md to include the new provider
+- Provider supports search and full-size image downloads
+- Follows the same pattern as other providers for consistency
+
+**Technical Details**:
+- Uses Playwright for web scraping
+- Implements `fetchImageUrls` for search functionality
+- Implements `getFullSizeImage` for full-size image retrieval
+- Includes error handling and logging
+- Added to provider order in configuration
+
+**Next Steps**:
+- Test the provider with various search queries
+- Consider adding API support if available in the future
+- Monitor for any website structure changes that might affect scraping
+
+### New Provider: PublicDomainPictures (2025-05-24)
+**Objective**: Add support for PublicDomainPictures.net as a new image provider
+**Achievements**:
+- Implemented `publicdomainpictures-provider.js` with web scraping support
+- Added configuration options in `config.json` and `config.json.example`
+- Updated README.md to include the new provider
+- Provider supports search and full-size image downloads
+- Follows the same pattern as other providers for consistency
+
+**Technical Details**:
+- Uses Playwright for web scraping
+- Implements `fetchImageUrls` for search functionality
+- Implements `getFullSizeImage` for full-size image retrieval
+- Includes error handling and logging
+- Added to provider order in configuration
+
+**Next Steps**:
+- Test the provider with various search queries
+- Monitor for any website structure changes that might affect scraping
+
+### New Provider: Reshot (2025-05-24)
+**Objective**: Add support for Reshot.com as a new image provider
+**Achievements**:
+- Implemented `reshot-provider.js` with web scraping support
+- Added configuration options in `config.json` and `config.json.example`
+- Updated README.md to include the new provider
+- Provider supports search and full-size image downloads
+- Follows the same pattern as other providers for consistency
+
+**Technical Details**:
+- Uses Playwright for web scraping
+- Implements `fetchImageUrls` for search functionality
+- Implements `getFullSizeImage` for full-size image retrieval
+- Includes error handling and logging
+- Added to provider order in configuration
+
+**Next Steps**:
+- Test the provider with various search queries
+- Monitor for any website structure changes that might affect scraping
+
+---
+
 ## Project Status: MATURE & STABLE 
 
 The Image Crawler project has reached a mature and stable state with all core features implemented, tested, and documented. The application successfully provides both local image scanning and web crawling capabilities across multiple platforms.
@@ -477,6 +570,95 @@ The `README.md` now accurately reflects the project's capabilities, especially h
 
 ## Encountered Errors:
 - None during this step.
+
+## How Errors Were Fixed:
+- N/A.
+
+---
+
+# Progress Update - Added New Providers: StockSnap.io & Shutterstock (Preview) (2025-05-24)
+
+## Implemented Features:
+- **New Provider: StockSnap.io (`stocksnap-provider.js`)**:
+  - Implemented a provider to fetch free CC0 images from `StockSnap.io` using web scraping.
+  - The provider navigates search results and detail pages to extract full-size image URLs.
+- **New Provider: Shutterstock (`shutterstock-provider.js`)**:
+  - Implemented a provider for `Shutterstock.com`.
+  - Primarily uses web scraping to fetch watermarked preview images.
+  - Includes a configuration option for an API key (`providers.shutterstock.apiKey`), with a note that full API download functionality is not yet implemented but the structure is ready for future extension. If no key is present, it defaults to preview scraping.
+- **Configuration Updates (`config.json`, `config.json.example`)**:
+  - Added `stocksnap` and `shutterstock` to the `providers.order` array.
+  - Included new configuration sections for `stocksnap` (enabled, maxResults) and `shutterstock` (enabled, maxResults, apiKey placeholder).
+- **Documentation Updates (`README.md`)**:
+  - Updated the list of supported providers in the "Features" section and the dedicated "Supported Image Providers" section to include `StockSnap.io` and `Shutterstock` (noting its preview capability).
+  - Updated the description of the `--provider` CLI option.
+  - Corrected and enhanced the example `config.json` structure in the "Advanced Configuration" section to be more comprehensive and include examples for the new providers.
+
+## Encountered Errors:
+- The initial update to the example JSON block in `README.md` was overly aggressive and removed some existing examples. This was subsequently corrected.
+
+## How Errors Were Fixed:
+- A follow-up `edit_file` operation was performed on `README.md` to restore and enhance the example JSON block, ensuring it accurately reflected a comprehensive configuration including previously existing examples alongside the new ones.
+
+---
+
+# Progress Update - New Provider Implementation Plan (2025-05-24)
+
+## Implemented Features:
+- **Created `docs/new_provider_implementation_plan.md`**:
+  - Authored a comprehensive markdown document detailing the plan for implementing new image providers as requested.
+  - **Contents of the plan include**:
+    - General architectural principles for adding new providers.
+    - Strategies for free providers (primarily web scraping).
+    - Strategies for commercial providers (API-first approach with web scraping for previews as a fallback).
+    - Detailed implementation steps and considerations for a selection of representative providers: 
+      - Free: FreeRangeStock.com, PublicDomainPictures.net, Reshot.com.
+      - Commercial: Adobe Stock, Getty Images, Dreamstime.
+    - Brief notes and considerations for other providers mentioned by the user.
+    - Guidelines for updating configuration files (`config.json`, `config.json.example`).
+    - Guidelines for updating `README.md`.
+    - General testing procedures for new providers.
+
+## Encountered Errors:
+- An initial tool call for `write_to_file` was made with an empty JSON object, which was an error in my previous turn. 
+
+## How Errors Were Fixed:
+- The error was identified, and the `write_to_file` tool was called again in the subsequent turn with the correct, complete content for `docs/new_provider_implementation_plan.md`.
+
+---
+
+# Progress Update - Provider Implementation Plan Updated (2025-05-24)
+
+## Implemented Features:
+- **Updated `docs/new_provider_implementation_plan.md`**:
+  - Replaced the existing Section 4 ("Other Providers (Brief Notes)") with a new, more comprehensive Section 4 titled "Full List of Potential New Providers".
+  - The new section incorporates the full list of 31 providers supplied by the user.
+  - Providers are categorized into:
+    - `4.1. ✅ Providers with Public APIs`
+    - `4.2. 🟡 Providers Without Public APIs or Limited Access (Primarily Web Scraping)`
+  - Added notes next to providers that are already implemented in the codebase or for which a detailed implementation strategy already exists in Section 3 of the plan.
+  - This update provides a more complete overview of all potential providers to be considered for future implementation.
+
+## Encountered Errors:
+- No new errors encountered in this step.
+
+## How Errors Were Fixed:
+- N/A.
+
+---
+
+# Progress Update - Provider Implementation Task List Created (2025-05-24)
+
+## Implemented Features:
+- **Created `docs/provider_implementation_tasks.md`**:
+  - Generated a new markdown file containing a comprehensive task list for implementing the new image providers.
+  - The task list is based on the `docs/new_provider_implementation_plan.md`.
+  - It breaks down the implementation for each pending provider into actionable, checkable steps (e.g., create file, implement constructor, implement `fetchImageUrls`, update config, update README, test).
+  - Providers are grouped similarly to the plan (those with detailed plans in Section 3, other API providers, other web scraping providers).
+  - This file will serve as a checklist to track progress on implementing the new providers.
+
+## Encountered Errors:
+- No errors encountered in this step.
 
 ## How Errors Were Fixed:
 - N/A.
