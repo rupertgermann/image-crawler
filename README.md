@@ -41,7 +41,7 @@ Here's a glimpse of the Image Crawler Electron application in action:
   - Deduplicate images by content hash (skips existing files)
 
 - **Web Mode**: Download images from multiple sources
-  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, and Shutterstock (fetches watermarked previews).
+  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, FreeRangeStock, and Shutterstock (fetches watermarked previews).
   - Search by keyword with advanced filters (some providers)
   - Safe search (enabled by default where applicable)
   - Headless browser mode option for web crawling (configurable in CLI, default in GUI for some operations)

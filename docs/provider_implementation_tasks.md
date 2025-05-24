@@ -4,20 +4,20 @@ This task list is derived from the `docs/new_provider_implementation_plan.md`. I
 
 ## Providers with Detailed Plans (from Section 3 of the plan)
 
-### 1. Implement Provider: FreeRangeStock.com (`freerangestock`)
-- [ ] Create provider file: `src/providers/freerangestock-provider.js`
-- [ ] Implement `constructor`
-- [ ] Implement `fetchImageUrls` (Web Scraping)
-    - [ ] Determine search URL format
-    - [ ] Identify CSS selectors for image links/thumbnails
-    - [ ] Extract metadata (detailPageUrl, thumbnailUrl, title)
-- [ ] Implement `getFullSizeImage` (Web Scraping)
-    - [ ] Navigate to detail page
-    - [ ] Identify CSS selector for full-size image
-    - [ ] Extract full-size image URL
-- [ ] Update `config.json` and `config.json.example`
-- [ ] Update `README.md`
-- [ ] Test provider thoroughly
+### 1. ✅ Implement Provider: FreeRangeStock.com (`freerangestock`) - COMPLETED 2025-05-24
+- [x] Create provider file: `src/providers/freerangestock-provider.js`
+- [x] Implement `constructor`
+- [x] Implement `fetchImageUrls` (Web Scraping)
+    - [x] Determine search URL format
+    - [x] Identify CSS selectors for image links/thumbnails
+    - [x] Extract metadata (detailPageUrl, thumbnailUrl, title)
+- [x] Implement `getFullSizeImage` (Web Scraping)
+    - [x] Navigate to detail page
+    - [x] Identify CSS selector for full-size image
+    - [x] Extract full-size image URL
+- [x] Update `config.json` and `config.json.example`
+- [x] Update `README.md`
+- [x] Test provider thoroughly
 
 ### 2. Implement Provider: PublicDomainPictures.net (`publicdomainpictures`)
 - [ ] Create provider file: `src/providers/publicdomainpictures-provider.js`

@@ -43,7 +43,8 @@
       "pixabay",
       "unsplash",
       "stocksnap",
-      "shutterstock"
+      "shutterstock",
+      "freerangestock"
     ],
     "google": { "enabled": false, "maxResults": 100 },
     "pexels": { "enabled": true, "maxResults": 30 },
@@ -85,6 +86,11 @@
       "maxResults": 20,
       "apiKey": "YOUR_SHUTTERSTOCK_API_KEY_OR_LEAVE_EMPTY_FOR_PREVIEWS",
       "comment": "Fetches watermarked previews if no API key. Full API download not yet implemented."
+    },
+    "freerangestock": {
+      "enabled": true,
+      "maxResults": 30,
+      "comment": "Free stock photos from FreeRangeStock.com"
     }
   },
   "logLevel": "INFO"
