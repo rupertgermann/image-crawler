@@ -67,28 +67,15 @@ class ProviderRegistry {
         };
       }
 
-      // Fallback for old Playwright providers during transition (optional, can be removed later)
-      // This section can be removed once all providers are migrated to provider-configs.js
-      let module;
-      switch (name) {
-        case 'google': module = await import('./google-provider.js'); break;
-        case 'pixabay': module = await import('./pixabay-provider.js'); break;
-        case 'unsplash': module = await import('./unsplash-provider.js'); break;
-        // case 'pexels': module = await import('./pexels-provider.js'); break; // Handled above
-        case 'bing': module = await import('./bing-provider.js'); break;
-        // case 'flickr': module = await import('./flickr-provider.js'); break; // Handled above
-        case 'duckduckgo': module = await import('./duckduckgo-provider.js'); break;
-        case 'freeimages': module = await import('./freeimages-provider.js'); break;
-        case 'wikimedia': module = await import('./wikimedia-provider.js'); break;
-        case 'stocksnap': module = await import('./stocksnap-provider.js'); break;
-        case 'freerangestock': module = await import('./freerangestock-provider.js'); break;
-        case 'publicdomainpictures': module = await import('./publicdomainpictures-provider.js'); break;
-        case 'reshot': module = await import('./reshot-provider.js'); break;
-        case 'shutterstock': module = await import('./shutterstock-provider.js'); break;
-        default: throw new Error(`Unknown or unmigrated provider: ${name}`);
+      // Check for Wikimedia (another API/specific provider not using generic Playwright)
+      // This check is placed after PROVIDER_CONFIGS to allow overriding wikimedia with a config if ever needed.
+      if (name === 'wikimedia') {
+        const module = await import('./wikimedia-provider.js');
+        return module.default;
       }
-      this.emitLog('warn', `Loading provider ${name} using old system. Consider migrating to provider-configs.js.`);
-      return module.default; // Return the default export from the module
+
+      // If not found in any of the above, it's an unknown or unconfigured provider
+      throw new Error(`Unknown or unconfigured provider: ${name}`);
     } catch (error) {
       console.error(`Error loading provider ${name}:`, error);
       // Attempt to emit log if possible, though emitter might not be available here

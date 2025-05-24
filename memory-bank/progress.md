@@ -334,7 +334,7 @@ This update reflects the implementation of the image-crawler-implementation-plan
 *   Provider-specific configurations (e.g., `maxScrollsBing`, `scrollDelayDDG`) were added to `src/utils/config.js` for fine-tuning Bing, DuckDuckGo, and FreeImages behavior.
 
 **Encountered Errors & Fixes:**
-*   Initially attempted to use `write_to_file` for `progress.md` which failed as the file exists. Corrected by switching to `edit_file` for appending content (pending this action).
+*   Initially attempted to use `write_to_file` for `progress.md` which failed as the file exists. 
 
 **Next Steps/Outstanding Issues:**
 *   Thorough end-to-end testing of all refactored image providers with various search queries and configurations.
@@ -662,3 +662,57 @@ The `README.md` now accurately reflects the project's capabilities, especially h
 
 ## How Errors Were Fixed:
 - N/A.
+
+## Project Status: IN DEVELOPMENT - REFACTORING & OPTIMIZATION
+
+### Playwright Provider Refactoring (2025-05-24)
+**Objective**: Consolidate multiple Playwright-based image providers into a single, generic, configurable provider to improve maintainability, reduce code duplication, and simplify the addition of new providers, while preserving all existing functionality.
+
+**Implemented Features & Changes**:
+
+1.  **Provider Consolidation & Configuration**:
+    *   Successfully migrated the following 11 Playwright-based providers to use the `GenericPlaywrightProvider` with configurations in `src/providers/configs/provider-configs.js`:
+        *   Google
+        *   Bing
+        *   Pixabay
+        *   Unsplash
+        *   DuckDuckGo
+        *   FreeImages
+        *   StockSnap
+        *   FreeRangeStock
+        *   PublicDomainPictures
+        *   Reshot
+        *   Shutterstock (Preview Mode)
+    *   Each provider's specific logic (search URLs, selectors, scrolling strategy, image extraction methods, full-size image retrieval actions) is now defined declaratively in `provider-configs.js`.
+
+2.  **Enhancements to `GenericPlaywrightProvider`**:
+    *   Added support for `queryTransformations` (e.g., `toLowerCase`, `spacesToHyphens`) in the provider configuration to handle provider-specific search query formatting (e.g., for FreeRangeStock).
+    *   Improved the `link_collection` image extraction type to correctly use `extractionConfig.baseUrl` for resolving relative URLs (e.g., for StockSnap, FreeRangeStock, PublicDomainPictures, Reshot).
+    *   Refined filter application logic within `_extractImageUrlsFromPage`.
+    *   The provider now handles various full-size image retrieval strategies based on configuration: `direct`, `attribute`, `url_param_decode`, `url_cleanup`, and `detail_page` (with support for multiple candidate selectors and attribute extraction).
+
+3.  **Code Cleanup & Simplification**:
+    *   Deleted 11 individual provider JavaScript files (`google-provider.js`, `bing-provider.js`, etc.) from `src/providers/` as their functionality is now covered by the generic provider and their respective configurations.
+    *   Simplified `src/providers/provider-registry.js` by removing the redundant `switch` statement previously used to load these individual provider files. The registry now primarily relies on `PROVIDER_CONFIGS` for Playwright providers.
+
+4.  **Preserved Functionality & Improved Maintainability**:
+    *   All known functionalities of the refactored providers (search, thumbnail extraction, full-size image preview/download) are intended to be preserved.
+    *   The new structure significantly improves maintainability and makes it easier to add or modify Playwright-based image sources by simply adding or editing a configuration object.
+
+**Encountered Issues & Fixes During Refactoring**:
+
+1.  **Relative URL Handling in `link_collection`**:
+    *   **Issue**: The `link_collection` extraction type initially did not correctly resolve relative URLs for detail pages or thumbnails.
+    *   **Fix**: Enhanced `_extractImageUrlsFromPage` to utilize `extractionConfig.baseUrl` when a `link_collection` type is used and an extracted URL is found to be relative.
+2.  **Provider-Specific Query Formatting**:
+    *   **Issue**: Some providers (e.g., FreeRangeStock) require specific formatting for search queries (e.g., lowercase, spaces to hyphens).
+    *   **Fix**: Introduced the `queryTransformations` array in the provider configuration and updated `_constructSearchUrl` in `GenericPlaywrightProvider` to apply these transformations.
+3.  **Complex Full-Size Image Selectors**:
+    *   **Issue**: Some sites (e.g., Shutterstock preview) use multiple possible selectors for the main image on a detail page.
+    *   **Fix**: The `detail_page` action in `fullSizeActions` now accepts an array of `selectors`, and the generic provider attempts them in order until an image is found. The `waitStrategy` was also adapted (e.g. `locator_any`).
+
+**Next Steps (as per Refactoring Plan)**:
+
+*   **Testing and Validation**: Conduct thorough unit tests, integration tests, and end-to-end tests for all refactored providers using the generic provider framework.
+*   **Documentation**: Update all relevant project documentation (README, developer guides) to reflect the new provider architecture and explain how to add/configure new providers.
+*   **Review and Refine**: Further review the `GenericPlaywrightProvider` and configurations for any additional optimization or generalization opportunities.
