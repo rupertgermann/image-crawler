@@ -10,6 +10,8 @@ const { readdir } = require('fs/promises');
     let Logger;
     let LocalCrawler;
     let PlaywrightCrawler;
+    let ProviderRegistry;
+    let providerRegistryInstance;
 
     let activeLocalCrawler = null;
     let activeWebCrawler = null;
@@ -46,53 +48,14 @@ const { readdir } = require('fs/promises');
         };
     }
 
-    // Function to get available providers by scanning the providers directory
-    async function getAvailableProviders() {
-        try {
-            const providersDir = path.join(__dirname, '..', 'src', 'providers');
-            const files = await readdir(providersDir);
-            
-            // Get enabled providers from config
-            const config = configManager.getConfig();
-            const enabledProviders = new Set();
-            
-            // Add providers that are explicitly enabled in config
-            if (config.providers) {
-                for (const [providerId, providerConfig] of Object.entries(config.providers)) {
-                    if (providerConfig?.enabled === true) {
-                        enabledProviders.add(providerId);
-                    }
-                }
-            }
-            
-            // Filter for provider files (ends with -provider.js) and check if enabled
-            const providerFiles = files.filter(file => {
-                if (!file.endsWith('-provider.js') || 
-                    ['base-provider.js', 'provider-registry.js'].includes(file)) {
-                    return false;
-                }
-                const providerId = file.replace('-provider.js', '');
-                return enabledProviders.has(providerId);
-            });
-            
-            // Extract provider IDs and sort alphabetically
-            const providers = providerFiles
-                .map(file => file.replace('-provider.js', ''))
-                .sort((a, b) => a.localeCompare(b));
-                
-            return { success: true, providers };
-        } catch (error) {
-            Logger.error('Error getting available providers:', error);
-            return { 
-                success: false, 
-                message: 'Failed to get available providers',
-                error: error.message 
-            };
-        }
+    try {
+        // Dynamic import for ProviderRegistry.js (ES Module)
+        const providerRegistryModule = await import('../src/providers/provider-registry.js');
+        ProviderRegistry = providerRegistryModule.default || providerRegistryModule;
+    } catch (e) {
+        console.error("Failed to load ProviderRegistry in main.js:", e);
+        ProviderRegistry = null; // Fallback or error handling
     }
-    
-    // Expose the function via IPC
-    ipcMain.handle('GET_AVAILABLE_PROVIDERS', getAvailableProviders);
 
     try {
         // Dynamic import for local-crawler.js (ES Module)
@@ -111,6 +74,30 @@ const { readdir } = require('fs/promises');
         console.error("Failed to load PlaywrightCrawler in main.js:", e);
         PlaywrightCrawler = null; // Or a fallback class
     }
+
+    // Function to get available providers by scanning the providers directory
+    async function getAvailableProviders() {
+        try {
+            if (!providerRegistryInstance) {
+                Logger.error('ProviderRegistry not initialized yet.');
+                return { success: false, message: 'ProviderRegistry not available.', providers: [] };
+            }
+            // Use the new method from ProviderRegistry
+            const providers = providerRegistryInstance.getAllKnownProviderNames();
+            return { success: true, providers };
+        } catch (error) {
+            Logger.error('Error getting available providers from ProviderRegistry:', error);
+            return { 
+                success: false, 
+                message: 'Failed to get available providers',
+                error: error.message,
+                providers: [] 
+            };
+        }
+    }
+    
+    // Expose the function via IPC
+    ipcMain.handle('GET_AVAILABLE_PROVIDERS', getAvailableProviders);
 
     // Existing main process code, now using dynamically imported modules
     function createWindow () {
@@ -139,8 +126,26 @@ const { readdir } = require('fs/promises');
                     await Logger.init(configManager.getConfig().logLevel);
                     Logger.info("Main process Logger initialized.");
                 }
+
+                // Initialize ProviderRegistry AFTER configManager and Logger
+                if (ProviderRegistry) {
+                    providerRegistryInstance = new ProviderRegistry();
+                    // Pass a dummy emitter or a simple one for main process logs from registry if needed
+                    // For now, assuming initialize doesn't strictly need a full crawlerInstance here
+                    // or that its internal logging is self-contained or uses console.
+                    // If it needs to emit to renderer, that's a different pattern.
+                    await providerRegistryInstance.initialize({ emit: (event, level, message) => {
+                        if (event === 'log') {
+                            Logger[level] ? Logger[level](`[ProviderRegistry via Main] ${message}`) : console.log(`[ProviderRegistry via Main - ${level}] ${message}`);
+                        }
+                    }});
+                    Logger.info("ProviderRegistry initialized in main process.");
+                } else {
+                    Logger.error("ProviderRegistry module not loaded, cannot initialize.");
+                }
+
             } catch (e) {
-                console.error("Error initializing config or logger:", e);
+                console.error("Error initializing config, logger, or provider registry:", e);
             }
         } else {
             console.warn("Using fallback configManager.init");

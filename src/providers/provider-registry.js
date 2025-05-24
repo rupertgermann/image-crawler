@@ -53,17 +53,22 @@ class ProviderRegistry {
   async initialize(crawlerInstance) {
     await this._loadPlaywrightConfigs();
 
-    // Dynamically load providers based on effective config (CLI overrides + file config)
-    const effectiveProvidersConfig = configManager.getEffectiveProvidersConfig();
-    const order = effectiveProvidersConfig.order || [];
+    const fullConfig = configManager.getConfig(); // Get the fully merged configuration
+    const providerSettings = fullConfig.providers;
 
-    for (const providerName of order) {
-      if (effectiveProvidersConfig[providerName]?.enabled) {
+    const playwrightProviderNames = Object.keys(this.playwrightProviderConfigs);
+    const apiProviderNames = ['pexels', 'flickr', 'wikimedia']; // Define API providers
+    const allKnownProviderNames = [...new Set([...playwrightProviderNames, ...apiProviderNames])];
+
+    for (const providerName of allKnownProviderNames) {
+      const specificProviderConfig = providerSettings[providerName];
+      if (specificProviderConfig?.enabled) {
         try {
           const ProviderClass = await this.loadProviderClass(providerName);
-          // Pass both the provider's config and the crawler instance as emitter
+          // Pass the provider's specific config from the merged fullConfig
+          // and the crawler instance as emitter
           this.providers[providerName] = new ProviderClass(
-            effectiveProvidersConfig[providerName],
+            specificProviderConfig, // This is providerSettings[providerName]
             crawlerInstance
           );
           this.activeProviders.push(this.providers[providerName]);
@@ -74,7 +79,6 @@ class ProviderRegistry {
           } else {
             console.warn(errorMsg);
           }
-          // Optionally, re-throw or log more verbosely
         }
       }
     }
@@ -133,6 +137,21 @@ class ProviderRegistry {
 
   getProvider(name) {
     return this.providers[name];
+  }
+
+  /**
+   * Returns a list of all known provider names, regardless of their enabled status.
+   * This is typically used to populate UI elements like dropdowns.
+   * Ensure _loadPlaywrightConfigs has been called before this.
+   */
+  getAllKnownProviderNames() {
+    // Ensure playwrightProviderConfigs is populated, typically by calling initialize() first,
+    // which calls _loadPlaywrightConfigs(). If called standalone, _loadPlaywrightConfigs might be needed.
+    // For simplicity, assuming initialize() is the entry point that populates this.
+    const playwrightProviderNames = Object.keys(this.playwrightProviderConfigs);
+    const apiProviderNames = ['pexels', 'flickr', 'wikimedia']; // Consistent list of API providers
+    // Combine, ensure uniqueness, and sort for consistent UI presentation
+    return [...new Set([...playwrightProviderNames, ...apiProviderNames])].sort();
   }
 
   // Helper to emit log events - this might be better placed in BaseProvider or a utility if used here
