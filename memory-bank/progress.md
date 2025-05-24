@@ -480,3 +480,29 @@ The `README.md` now accurately reflects the project's capabilities, especially h
 
 ## How Errors Were Fixed:
 - N/A.
+
+---
+
+# Progress Update - Added New Providers: StockSnap.io & Shutterstock (Preview) (2025-05-24)
+
+## Implemented Features:
+- **New Provider: StockSnap.io (`stocksnap-provider.js`)**:
+  - Implemented a provider to fetch free CC0 images from `StockSnap.io` using web scraping.
+  - The provider navigates search results and detail pages to extract full-size image URLs.
+- **New Provider: Shutterstock (`shutterstock-provider.js`)**:
+  - Implemented a provider for `Shutterstock.com`.
+  - Primarily uses web scraping to fetch watermarked preview images.
+  - Includes a configuration option for an API key (`providers.shutterstock.apiKey`), with a note that full API download functionality is not yet implemented but the structure is ready for future extension. If no key is present, it defaults to preview scraping.
+- **Configuration Updates (`config.json`, `config.json.example`)**:
+  - Added `stocksnap` and `shutterstock` to the `providers.order` array.
+  - Included new configuration sections for `stocksnap` (enabled, maxResults) and `shutterstock` (enabled, maxResults, apiKey placeholder).
+- **Documentation Updates (`README.md`)**:
+  - Updated the list of supported providers in the "Features" section and the dedicated "Supported Image Providers" section to include `StockSnap.io` and `Shutterstock` (noting its preview capability).
+  - Updated the description of the `--provider` CLI option.
+  - Corrected and enhanced the example `config.json` structure in the "Advanced Configuration" section to be more comprehensive and include examples for the new providers.
+
+## Encountered Errors:
+- The initial update to the example JSON block in `README.md` was overly aggressive and removed some existing examples. This was subsequently corrected.
+
+## How Errors Were Fixed:
+- A follow-up `edit_file` operation was performed on `README.md` to restore and enhance the example JSON block, ensuring it accurately reflected a comprehensive configuration including previously existing examples alongside the new ones.
