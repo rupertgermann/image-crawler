@@ -24,13 +24,6 @@
       "defaultScanPath": "/home/your_username/Pictures"
     }
   },
-  "searchEngines": {
-    "google": {
-      "enabled": true,
-      "maxResults": 100,
-      "safeSearch": true
-    }
-  },
   "providers": {
     "google": { "enabled": false, "maxResults": 100 },
     "pexels": { "enabled": true, "maxResults": 30 },

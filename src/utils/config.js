@@ -32,15 +32,6 @@ const DEFAULT_CONFIG = {
       defaultOutputDir: path.join(process.env.HOME, 'Downloads', 'image-crawler')
     }
   },
-  
-  // Search engines
-  searchEngines: {
-    google: {
-      enabled: true,
-      maxResults: 100,
-      safeSearch: true
-    }
-  },
 
   // Providers configuration
   providers: {
