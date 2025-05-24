@@ -445,3 +445,38 @@ To comprehensively update the `README.md` file to reflect the current state of t
 
 ## Overall Assessment:
 The `README.md` now accurately reflects the project's capabilities, especially highlighting the Electron GUI. The inclusion of screenshots and clear instructions for both CLI and GUI usage significantly improves the documentation's quality and usefulness for new users and developers.
+
+---
+
+# Progress Update - Flickr API Key Configuration (2025-05-24)
+
+## Implemented Features:
+- **Flickr API Key Configuration**: Added the ability to configure the Flickr API key.
+  - The API key can be set in `config.json` under `providers.flickr.apiKey`.
+  - Alternatively, it can be set using the `FLICKR_API_KEY` environment variable.
+  - Updated `config.json` to include the `providers.flickr.apiKey` field with a placeholder value `"YOUR_FLICKR_API_KEY_HERE"`.
+  - The `src/providers/flickr-provider.js` reads this key from the merged configuration object or falls back to the environment variable.
+
+## Encountered Errors:
+- Initially attempted to use `write_to_file` to update `progress.md`, which failed because the file already exists. 
+
+## How Errors Were Fixed:
+- Corrected the approach to use `edit_file` with an append instruction after viewing the existing file content to ensure proper formatting and placement of the new entry.
+
+---
+
+# Progress Update - Added `config.json.example` (2025-05-24)
+
+## Implemented Features:
+- **Created `config.json.example`**: Generated a comprehensive example configuration file named `config.json.example` based on the current `config.json`.
+  - The example file uses generic user paths (e.g., `/Users/your_username/Pictures`, `/home/your_username/Pictures`).
+  - It includes all current configuration options and placeholders for sensitive information like API keys (e.g., `YOUR_FLICKR_API_KEY_HERE`).
+- **Updated `README.md`**: Modified the "Advanced Configuration" section in `README.md`.
+  - Added a note explaining that `config.json.example` can be copied to `config.json` and customized by the user.
+  - This provides users with a clear template for all available configuration settings.
+
+## Encountered Errors:
+- None during this step.
+
+## How Errors Were Fixed:
+- N/A.

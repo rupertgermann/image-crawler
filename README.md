@@ -349,28 +349,7 @@ npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types j
 - `--timeout <ms>`: Browser operation timeout in milliseconds (default: `30000`)
 - `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`. Default is 'all' configured providers.
 
-### Interactive Mode
 
-Start in interactive mode for a guided experience. This is perfect for new users or when you want to explore available options:
-
-```bash
-# Start the interactive mode
-npx image-crawler interactive
-
-# Example interactive session flow:
-# 1. Choose between Local or Web mode
-# 2. For Local: Select source folder, output location, and filters
-# 3. For Web: Enter search query, select providers, and set filters
-# 4. Review settings and confirm to start
-
-# You can also pre-select the mode:
-npx image-crawler interactive --mode web
-npx image-crawler interactive --mode local
-```
-
-```bash
-npx image-crawler interactive
-```
 
 ## Configuration
 
@@ -403,6 +382,11 @@ Configuration is stored in `config.json` in the current working directory. The f
 ```
 
 #### Advanced Configuration
+
+You can customize the application behavior by creating a `config.json` file in the root of your project or in the global config directory (`~/.config/image-crawler/config.json` or platform equivalent).
+
+A comprehensive template, `config.json.example`, is available in the root of the repository. You can copy this file to `config.json` and modify it according to your needs. This file documents all available options.
+
 ```json
 {
   "logLevel": "debug",
@@ -441,15 +425,14 @@ npx image-crawler web "landscape" --config ./my-config.json
 
 The application supports the following environment variables:
 
-- `USE_NATIVE_DIALOG=true`: Enables native folder selection dialogs (CLI interface is used by default)
 - `DEBUG=image-crawler:*`: Enable debug logging
 - `NODE_ENV=development`: Run in development mode (enables additional logging)
 
 Example usage:
 
 ```bash
-# Enable native dialogs and debug logging
-USE_NATIVE_DIALOG=true DEBUG=image-crawler:* npx image-crawler local
+# Enable debug logging
+DEBUG=image-crawler:* npx image-crawler local
 ```
 
 ## Development

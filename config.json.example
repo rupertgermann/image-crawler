@@ -1,0 +1,78 @@
+{
+  "maxDownloads": 100,
+  "minWidth": 800,
+  "minHeight": 600,
+  "minFileSize": "100KB",
+  "fileTypes": [
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp"
+  ],
+  "platformSpecific": {
+    "windows": {
+      "selectedDrives": [
+        "C:\\"
+      ],
+      "scanNetworkDrives": false
+    },
+    "darwin": {
+      "defaultScanPath": "/Users/your_username/Pictures"
+    },
+    "linux": {
+      "defaultScanPath": "/home/your_username/Pictures"
+    }
+  },
+  "searchEngines": {
+    "google": {
+      "enabled": true,
+      "maxResults": 100,
+      "safeSearch": true
+    }
+  },
+  "providers": {
+    "order": [
+      "google",
+      "pexels",
+      "bing",
+      "flickr",
+      "duckduckgo",
+      "freeimages",
+      "wikimedia",
+      "pixabay",
+      "unsplash"
+    ],
+    "google": { "enabled": false, "maxResults": 100 },
+    "pexels": { "enabled": true, "maxResults": 30 },
+    "bing": {
+      "enabled": true,
+      "maxResults": 30,
+      "maxScrollsBing": 15,
+      "scrollDelayBing": 2000,
+      "lightboxDelayBing": 1500
+    },
+    "flickr": {
+      "enabled": false,
+      "maxResults": 30,
+      "apiKey": "YOUR_FLICKR_API_KEY_HERE"
+    },
+    "duckduckgo": {
+      "enabled": true,
+      "maxResults": 30,
+      "maxScrollsDDG": 15,
+      "loadMoreTimeoutDDG": 10000,
+      "scrollDelayDDG": 2000
+    },
+    "freeimages": {
+      "enabled": true,
+      "maxResults": 30,
+      "maxScrollsFreeImages": 10,
+      "scrollDelayFreeImages": 2500
+    },
+    "wikimedia": { "enabled": true, "maxResults": 30 },
+    "pixabay": { "enabled": true, "maxResults": 30 },
+    "unsplash": { "enabled": true, "maxResults": 30 }
+  },
+  "logLevel": "INFO"
+}
