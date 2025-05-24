@@ -188,6 +188,47 @@ class ConfigManager {
     // this.config is already a deep merge of DEFAULT_CONFIG and user's config.json from loadConfig/createDefaultConfig
     // If this.config is somehow null (e.g., before init), fallback to DEFAULT_CONFIG.
     const baseConfig = this.config ? JSON.parse(JSON.stringify(this.config)) : JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+    // Apply CLI/UI provider overrides before merging runtime 'overrides'
+    if (this.cliProviderOverrides && this.cliProviderOverrides !== 'all') {
+      if (baseConfig.providers) {
+        for (const providerKey in baseConfig.providers) {
+          if (Object.prototype.hasOwnProperty.call(baseConfig.providers, providerKey)) {
+            if (typeof baseConfig.providers[providerKey] === 'object' && baseConfig.providers[providerKey] !== null) {
+              baseConfig.providers[providerKey].enabled = false;
+            } else {
+              // Handle cases where provider config might not be an object (though unlikely for 'enabled' flag)
+              baseConfig.providers[providerKey] = { enabled: false }; 
+            }
+          }
+        }
+        if (baseConfig.providers[this.cliProviderOverrides]) {
+          baseConfig.providers[this.cliProviderOverrides].enabled = true;
+        } else {
+          // If the overridden provider doesn't exist, create its entry and enable it.
+          // This ensures that if a new provider is selected via UI/CLI but not yet in config.json's provider list,
+          // it can still be processed if ProviderRegistry knows about it.
+          baseConfig.providers[this.cliProviderOverrides] = { enabled: true };
+          // console.warn(`[ConfigManager] CLI override provider "${this.cliProviderOverrides}" was not in config.json; added and enabled.`);
+        }
+      }
+    } else if (this.cliProviderOverrides === 'all') {
+      // If 'all' is specified, ensure all known providers in the config are marked as enabled
+      // This might not be strictly necessary if config.json already has them enabled, 
+      // but acts as an explicit override if 'all' is chosen.
+      if (baseConfig.providers) {
+        for (const providerKey in baseConfig.providers) {
+          if (Object.prototype.hasOwnProperty.call(baseConfig.providers, providerKey)) {
+             if (typeof baseConfig.providers[providerKey] === 'object' && baseConfig.providers[providerKey] !== null) {
+                baseConfig.providers[providerKey].enabled = true;
+             } else {
+                baseConfig.providers[providerKey] = { enabled: true }; 
+             }
+          }
+        }
+      }
+    }
+
     // Now, deep-merge any runtime overrides onto this baseConfig
     return this.deepMerge(baseConfig, overrides);
   }

@@ -701,3 +701,30 @@ The `README.md` now accurately reflects the project's capabilities, especially h
 
 **Next Steps (if applicable based on current task):**
 *   The application should be tested to ensure all Playwright-based providers are correctly loaded and functional with the new configuration structure.
+
+---
+
+# Bugfix: Provider Selection and Bing Warning (Ongoing - YYYY-MM-DD)
+
+**Objective**: Resolve issues where selected image provider is ignored and address Bing's full-size action type warning.
+
+**Implemented Features (Part 1 - Provider Selection):**
+
+*   **Provider Selection Override in `ConfigManager`:**
+    *   Modified the `getConfig` method in `src/utils/config.js`.
+    *   The method now correctly processes `this.cliProviderOverrides` (set by UI/CLI selection).
+    *   If a single provider is selected (and not 'all'), the configuration returned to `ProviderRegistry` will have only that provider enabled. All other providers will be explicitly disabled.
+    *   If 'all' providers are selected, the configuration ensures all known providers are enabled.
+    *   This directly addresses the bug where the UI's provider selection was being ignored in web mode.
+
+**Encountered Errors & Fixes:**
+
+*   Initially attempted to use `write_to_file` for `progress.md` which failed as the file already exists. Corrected to view and then edit/append to the file.
+
+**Next Steps:**
+
+*   User to test the application thoroughly:
+    *   Verify single provider selection works as expected in Web Mode (e.g., StockSnap, DuckDuckGo).
+    *   Verify 'All Providers' selection activates multiple providers.
+    *   Specifically test 'Bing' to check if the `Unknown full-size action type: lightbox` warning persists after this fix.
+*   If the Bing warning is still present, further investigation will be needed as per the original plan (e.g., adding more logging around `FULL_SIZE_ACTIONS` in `generic-playwright-provider.js`).
