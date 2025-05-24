@@ -18,21 +18,42 @@ From the command line output, we can see the following issues:
    - Error handling in the dropdown population might be insufficient
    - The dynamic population might be executing before the DOM is fully loaded
 
-## Solution Plan
+## Solution Plan (Alphabetical, No Ordering Arrays)
 
-### Step 1: Fix the Configuration Duplication
+### Step 1: Remove Provider Ordering Arrays & Logic
 
-1. Update the config.json file to remove duplicate entries in the providers.order array.
-2. This likely happened during earlier updates when we were adding new providers.
+1. Remove the `providers.order` array from all configuration files (`config.json`, `config.json.example`, and related logic).
+2. Remove any code in the application (renderer, main, or config utils) that references or relies on provider ordering arrays.
 
-### Step 2: Improve the Provider Dropdown Population Logic
+### Step 2: Dynamically Enumerate Providers Alphabetically
 
-1. Modify the `loadAndApplyConfig` function in `renderer.js`:
-   - Use `config.providers?.order` instead of `defaultConfig.providers?.order`
-   - Add more robust error handling
-   - Add console logging to help debug issues
+1. In the Electron main process, enumerate all provider files in `src/providers/` (excluding base/provider-registry/utility files).
+2. Sort the provider list alphabetically by provider ID (derived from filename, e.g., `stocksnap-provider.js` → `stocksnap`).
+3. Expose this list to the renderer via `electronAPI` (e.g. `getAvailableProviders`).
+4. In the renderer, request this list on startup and populate the dropdown alphabetically.
+5. Use a mapping for display names, but always show all detected providers, sorted A-Z.
 
-2. Add a fallback to handle cases where the configuration doesn't have the expected structure:
+### Step 3: Remove Manual Provider Order from Config
+
+1. Remove any config logic that tries to set or override provider order.
+2. Only use config to enable/disable providers, not to order them.
+
+### Step 4: Robustness & Future-Proofing
+
+1. If a new provider file is added, it will automatically appear in the dropdown (A-Z order) on next app launch.
+2. If a provider is removed from the folder, it disappears from the dropdown.
+3. If a provider is disabled in config, it can be shown as disabled or hidden (depending on UX preference).
+
+### Step 5: Testing
+
+1. Add/remove provider files and verify the dropdown updates (A-Z order).
+2. Confirm no ordering array is required or referenced anywhere in the codebase.
+3. Confirm the dropdown is always complete and alphabetically sorted.
+
+---
+
+**This approach is simple, robust, and future-proofs the provider dropdown. No more manual ordering or risk of config getting out of sync.**
+
    - If the providers order array is missing or empty, use a hardcoded list of available providers
    - Ensure a non-empty dropdown even if there are configuration issues
 
