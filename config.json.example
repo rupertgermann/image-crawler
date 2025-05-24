@@ -44,7 +44,9 @@
       "unsplash",
       "stocksnap",
       "shutterstock",
-      "freerangestock"
+      "freerangestock",
+      "publicdomainpictures",
+      "reshot"
     ],
     "google": { "enabled": false, "maxResults": 100 },
     "pexels": { "enabled": true, "maxResults": 30 },
@@ -91,6 +93,16 @@
       "enabled": true,
       "maxResults": 30,
       "comment": "Free stock photos from FreeRangeStock.com"
+    },
+    "publicdomainpictures": {
+      "enabled": true,
+      "maxResults": 30,
+      "comment": "Public domain and free stock photos from PublicDomainPictures.net"
+    },
+    "reshot": {
+      "enabled": true,
+      "maxResults": 30,
+      "comment": "Free stock photos from Reshot.com"
     }
   },
   "logLevel": "INFO"

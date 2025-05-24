@@ -132,7 +132,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const effectiveProvider = config.provider || (defaultConfig.providers ? defaultConfig.providers.order[0] : 'all') || 'all';
 
             if (globalDefaultOutputDirInput) globalDefaultOutputDirInput.value = effectiveOutputDir;
-            if (globalDefaultWebProviderSelect) globalDefaultWebProviderSelect.value = effectiveProvider;
             if (localOutputDirInput) localOutputDirInput.value = effectiveOutputDir;
             if (webOutputDirInput) webOutputDirInput.value = effectiveOutputDir;
             
@@ -152,7 +151,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             const webFileTypes = config.fileTypes || defaultConfig.fileTypes || ['jpg', 'png'];
             if(webFileTypesInput) webFileTypesInput.value = Array.isArray(webFileTypes) ? webFileTypes.join(',') : webFileTypes;
 
-            if(webProviderSelect) webProviderSelect.value = config.provider || effectiveProvider || 'all'; 
+            // Populate provider dropdowns
+            const providerOrder = defaultConfig.providers?.order || [];
+            const providerDisplayNames = {
+                'google': 'Google',
+                'pixabay': 'Pixabay',
+                'unsplash': 'Unsplash',
+                'pexels': 'Pexels',
+                'bing': 'Bing',
+                'flickr': 'Flickr',
+                'duckduckgo': 'DuckDuckGo',
+                'freeimages': 'FreeImages',
+                'wikimedia': 'Wikimedia',
+                'stocksnap': 'StockSnap',
+                'freerangestock': 'FreeRangeStock',
+                'publicdomainpictures': 'PublicDomainPictures',
+                'reshot': 'Reshot',
+                'shutterstock': 'Shutterstock'
+            };
+
+            function populateProviderDropdown(selectElement) {
+                if (!selectElement) return;
+                
+                // Save the current value
+                const currentValue = selectElement.value;
+                
+                // Clear existing options
+                selectElement.innerHTML = '';
+                
+                // Add 'All' option
+                const allOption = document.createElement('option');
+                allOption.value = 'all';
+                allOption.textContent = 'All Providers';
+                selectElement.appendChild(allOption);
+                
+                // Add each provider from the config
+                providerOrder.forEach(provider => {
+                    const option = document.createElement('option');
+                    option.value = provider;
+                    option.textContent = providerDisplayNames[provider] || provider;
+                    selectElement.appendChild(option);
+                });
+                
+                // Restore the previous value if it still exists
+                if (currentValue && Array.from(selectElement.options).some(opt => opt.value === currentValue)) {
+                    selectElement.value = currentValue;
+                } else if (selectElement.id === 'webProvider') {
+                    // For web provider, use the effective provider or first in the list
+                    selectElement.value = effectiveProvider || (providerOrder[0] || 'all');
+                } else if (selectElement.id === 'globalDefaultWebProvider') {
+                    // For global default, use the effective provider or first in the list
+                    selectElement.value = effectiveProvider || (providerOrder[0] || 'all');
+                } else {
+                    // Default to 'all' if no other option is selected
+                    selectElement.value = 'all';
+                }
+            }
+            
+            // Populate both provider dropdowns
+            populateProviderDropdown(webProviderSelect);
+            populateProviderDropdown(globalDefaultWebProviderSelect);
             
             logMessage('All relevant UI fields populated from configuration.');
 

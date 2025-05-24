@@ -25,6 +25,46 @@ The Image Crawler project is actively being enhanced with new image providers wh
 - Consider adding API support if available in the future
 - Monitor for any website structure changes that might affect scraping
 
+### New Provider: PublicDomainPictures (2025-05-24)
+**Objective**: Add support for PublicDomainPictures.net as a new image provider
+**Achievements**:
+- Implemented `publicdomainpictures-provider.js` with web scraping support
+- Added configuration options in `config.json` and `config.json.example`
+- Updated README.md to include the new provider
+- Provider supports search and full-size image downloads
+- Follows the same pattern as other providers for consistency
+
+**Technical Details**:
+- Uses Playwright for web scraping
+- Implements `fetchImageUrls` for search functionality
+- Implements `getFullSizeImage` for full-size image retrieval
+- Includes error handling and logging
+- Added to provider order in configuration
+
+**Next Steps**:
+- Test the provider with various search queries
+- Monitor for any website structure changes that might affect scraping
+
+### New Provider: Reshot (2025-05-24)
+**Objective**: Add support for Reshot.com as a new image provider
+**Achievements**:
+- Implemented `reshot-provider.js` with web scraping support
+- Added configuration options in `config.json` and `config.json.example`
+- Updated README.md to include the new provider
+- Provider supports search and full-size image downloads
+- Follows the same pattern as other providers for consistency
+
+**Technical Details**:
+- Uses Playwright for web scraping
+- Implements `fetchImageUrls` for search functionality
+- Implements `getFullSizeImage` for full-size image retrieval
+- Includes error handling and logging
+- Added to provider order in configuration
+
+**Next Steps**:
+- Test the provider with various search queries
+- Monitor for any website structure changes that might affect scraping
+
 ---
 
 ## Project Status: MATURE & STABLE 
