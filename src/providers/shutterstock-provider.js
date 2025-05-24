@@ -8,26 +8,30 @@ class ShutterstockProvider extends BaseProvider {
         this.apiKey = config.apiKey || process.env.SHUTTERSTOCK_API_KEY;
 
         if (this.apiKey) {
-            this.logInfo(`${this.providerName}: API key found. Note: Full API download not yet implemented; will use preview scraping.`);
+            this.emitLog('info', `${this.providerName}: API key found. Note: Full API download not yet implemented; will use preview scraping.`);
         } else {
-            this.logInfo(`${this.providerName}: API key not found. Operating in preview scraping mode.`);
+            this.emitLog('info', `${this.providerName}: API key not found. Operating in preview scraping mode.`);
         }
     }
 
-    async fetchImageUrls(query, page, options = {}) {
+    async fetchImageUrls(query, options = {}, page) {
         // For now, always use scraping for previews, even if API key is present.
         // API implementation for fetching image lists can be added later.
+        if (!page) {
+            this.emitLog('error', 'Page object is required but was not provided');
+            throw new Error('Page object is required for Shutterstock provider');
+        }
         return this._scrapeFetchImageUrls(query, page, options);
     }
 
     async _scrapeFetchImageUrls(query, page, options = {}) {
         const maxResults = options.maxResults || this.config.maxResults || 30;
-        this.logInfo(`Scraping ${this.providerName} for query: "${query}" (max: ${maxResults})`);
+        this.emitLog('info', `Scraping ${this.providerName} for query: "${query}" (max: ${maxResults})`);
         const imageUrls = [];
 
         try {
             const searchUrl = `https://www.shutterstock.com/search?searchterm=${encodeURIComponent(query)}`;
-            this.logInfo(`Navigating to ${searchUrl}`);
+            this.emitLog('info', `Navigating to ${searchUrl}`);
             await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 60000 });
 
             // Selector for image containers/links. This is a best guess and might need frequent updates.
@@ -35,7 +39,7 @@ class ShutterstockProvider extends BaseProvider {
             const imageLinkSelector = 'a[href*="/image-photo/"], a[href*="/image-vector/"]';
             await page.waitForSelector(imageLinkSelector, { timeout: 25000 });
             const imageElements = await page.$$(imageLinkSelector);
-            this.logInfo(`Found ${imageElements.length} potential image links on ${this.providerName} search page.`);
+            this.emitLog('info', `Found ${imageElements.length} potential image links on ${this.providerName} search page.`);
 
             for (let i = 0; i < imageElements.length; i++) {
                 if (imageUrls.length >= maxResults) break;
@@ -79,11 +83,11 @@ class ShutterstockProvider extends BaseProvider {
                     });
                 }
             }
-            this.logInfo(`Collected ${imageUrls.length} unique image results from ${this.providerName} scraping.`);
+            this.emitLog('info', `Collected ${imageUrls.length} unique image results from ${this.providerName} scraping.`);
             return imageUrls.slice(0, maxResults);
 
         } catch (error) {
-            this.logError(`Error scraping ${this.providerName}: ${error.message}`, error);
+            this.emitLog('error', `Error scraping ${this.providerName}: ${error.message}`, error);
             return [];
         }
     }
@@ -96,10 +100,10 @@ class ShutterstockProvider extends BaseProvider {
 
     async _scrapeGetFullSizeImage(imageInfo, page, options = {}) {
         if (!imageInfo.detailPageUrl) {
-            this.logWarn(`${this.providerName}: No detail page URL for image ID ${imageInfo.id}.`);
+            this.emitLog('warn', `${this.providerName}: No detail page URL for image ID ${imageInfo.id}.`);
             return super.getFullSizeImage(imageInfo, page, options); // Fallback
         }
-        this.logInfo(`Scraping ${this.providerName} detail page for preview: ${imageInfo.detailPageUrl}`);
+        this.emitLog('info', `Scraping ${this.providerName} detail page for preview: ${imageInfo.detailPageUrl}`);
         try {
             await page.goto(imageInfo.detailPageUrl, { waitUntil: 'networkidle', timeout: 60000 });
 
@@ -129,16 +133,16 @@ class ShutterstockProvider extends BaseProvider {
             if (imgElement) {
                 const fullImageUrl = await imgElement.getAttribute('src');
                 if (fullImageUrl) {
-                    this.logInfo(`Found ${this.providerName} preview image URL: ${fullImageUrl}`);
+                    this.emitLog('info', `Found ${this.providerName} preview image URL: ${fullImageUrl}`);
                     const updatedImageInfo = { ...imageInfo, url: fullImageUrl };
                     return await super.getFullSizeImage(updatedImageInfo, page, options);
                 }
             }
 
-            this.logWarn(`Could not find preview image on ${this.providerName} detail page: ${imageInfo.detailPageUrl}`);
+            this.emitLog('warn', `Could not find preview image on ${this.providerName} detail page: ${imageInfo.detailPageUrl}`);
             return null;
         } catch (error) {
-            this.logError(`Error scraping ${this.providerName} detail page ${imageInfo.detailPageUrl}: ${error.message}`, error);
+            this.emitLog('error', `Error scraping ${this.providerName} detail page ${imageInfo.detailPageUrl}: ${error.message}`, error);
             return null;
         }
     }

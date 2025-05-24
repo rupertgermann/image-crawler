@@ -8,13 +8,19 @@ class PublicDomainPicturesProvider extends BaseProvider {
         this.baseUrl = 'https://www.publicdomainpictures.net';
     }
 
-    async fetchImageUrls(query, page, options = {}) {
+    async fetchImageUrls(query, options = {}, page) {
         const maxResults = options.maxResults || this.config.maxResults || 30;
         this.emitLog('info', `Fetching images from ${this.providerName} for query: "${query}"`);
+        
+        if (!page) {
+            this.emitLog('error', 'Page object is required but was not provided');
+            throw new Error('Page object is required for PublicDomainPictures provider');
+        }
+        
         const imageUrls = [];
 
         try {
-            const searchUrl = `${this.baseUrl}/en/search.php?q=${encodeURIComponent(query)}`;
+            const searchUrl = `${this.baseUrl}/en/hledej.php?hleda=${encodeURIComponent(query)}`;
             this.emitLog('debug', `Navigating to ${searchUrl}`);
             
             await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 60000 });

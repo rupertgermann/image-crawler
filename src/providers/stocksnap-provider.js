@@ -7,19 +7,25 @@ class StockSnapProvider extends BaseProvider {
         this.providerName = 'StockSnap';
     }
 
-    async fetchImageUrls(query, page, options = {}) {
+    async fetchImageUrls(query, options = {}, page) {
         const maxResults = options.maxResults || this.config.maxResults || 30;
-        this.logInfo(`Fetching images from ${this.providerName} for query: "${query}" (max: ${maxResults})`);
+        this.emitLog('info', `Fetching images from ${this.providerName} for query: "${query}" (max: ${maxResults})`);
+        
+        if (!page) {
+            this.emitLog('error', 'Page object is required but was not provided');
+            throw new Error('Page object is required for StockSnap provider');
+        }
+        
         const imageUrls = [];
 
         try {
             const searchUrl = `https://stocksnap.io/search/${encodeURIComponent(query)}`;
-            this.logInfo(`Navigating to ${searchUrl}`);
+            this.emitLog('info', `Navigating to ${searchUrl}`);
             await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 60000 });
 
             await page.waitForSelector('div.photo-grid-item img', { timeout: 20000 });
             const imageElements = await page.$$('div.photo-grid-item a');
-            this.logInfo(`Found ${imageElements.length} potential image links on ${this.providerName} search page.`);
+            this.emitLog('info', `Found ${imageElements.length} potential image links on ${this.providerName} search page.`);
 
             for (let i = 0; i < imageElements.length; i++) {
                 if (imageUrls.length >= maxResults) break;
@@ -42,22 +48,22 @@ class StockSnapProvider extends BaseProvider {
                     });
                 }
             }
-            this.logInfo(`Collected ${imageUrls.length} image results from ${this.providerName}.`);
+            this.emitLog('info', `Extracted ${imageUrls.length} unique image results from ${this.providerName}.`);
             return imageUrls.slice(0, maxResults);
 
         } catch (error) {
-            this.logError(`Error fetching images from ${this.providerName}: ${error.message}`, error);
+            this.emitLog('error', `Error fetching from ${this.providerName}: ${error.message}`, error);
             return [];
         }
     }
 
     async getFullSizeImage(imageInfo, page, options = {}) {
         if (!imageInfo.detailPageUrl) {
-            this.logWarn(`${this.providerName}: No detail page URL for image ID ${imageInfo.id}. Attempting direct download of 'url' if available.`);
+            this.emitLog('warn', `${this.providerName}: No detail page URL for image ID ${imageInfo.id}. Attempting direct download of 'url' if available.`);
             return super.getFullSizeImage(imageInfo, page, options); // Fallback to imageInfo.url if detailPageUrl is missing
         }
 
-        this.logInfo(`Fetching full size image from ${this.providerName} detail page: ${imageInfo.detailPageUrl}`);
+        this.emitLog('info', `Getting full-size image from ${this.providerName} for: ${imageInfo.detailPageUrl}`);
         try {
             await page.goto(imageInfo.detailPageUrl, { waitUntil: 'networkidle', timeout: 60000 });
             // Selector for the main image on the detail page. StockSnap uses 'img.photo-expanded'.
@@ -67,12 +73,12 @@ class StockSnapProvider extends BaseProvider {
             if (imgElement) {
                 const fullImageUrl = await imgElement.getAttribute('src');
                 if (fullImageUrl) {
-                    this.logInfo(`Found full image URL on ${this.providerName}: ${fullImageUrl}`);
+                    this.emitLog('info', `Found full-size image URL on ${this.providerName}: ${fullImageUrl}`);
                     const updatedImageInfo = { ...imageInfo, url: fullImageUrl }; // Set the direct image URL
                     return await super.getFullSizeImage(updatedImageInfo, page, options); // Use BaseProvider to download
                 }
             }
-            this.logWarn(`Could not find full size image on ${this.providerName} detail page: ${imageInfo.detailPageUrl}`);
+            this.emitLog('warn', `Could not find full size image on ${this.providerName} detail page: ${imageInfo.detailPageUrl}`);
             return null;
         } catch (error) {
             this.logError(`Error fetching full size image from ${this.providerName} detail page ${imageInfo.detailPageUrl}: ${error.message}`, error);

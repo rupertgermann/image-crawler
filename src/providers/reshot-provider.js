@@ -8,9 +8,15 @@ class ReshotProvider extends BaseProvider {
         this.baseUrl = 'https://www.reshot.com';
     }
 
-    async fetchImageUrls(query, page, options = {}) {
+    async fetchImageUrls(query, options = {}, page) {
         const maxResults = options.maxResults || this.config.maxResults || 30;
         this.emitLog('info', `Fetching images from ${this.providerName} for query: "${query}"`);
+        
+        if (!page) {
+            this.emitLog('error', 'Page object is required but was not provided');
+            throw new Error('Page object is required for Reshot provider');
+        }
+        
         const imageUrls = [];
 
         try {
