@@ -1,12 +1,49 @@
 // ProviderRegistry: manages enabled providers and their order
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import configManager from '../utils/config.js';
-import { PROVIDER_CONFIGS } from './configs/provider-configs.js';
 import GenericPlaywrightProvider from './generic-playwright-provider.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class ProviderRegistry {
   constructor() { // No need to pass config here, will get from configManager
     this.providers = {};
     this.activeProviders = [];
+    this.playwrightProviderConfigs = {};
+  }
+
+  /**
+   * Load Playwright provider configurations from the configs/playwright directory.
+   */
+  async _loadPlaywrightConfigs() {
+    const configsDir = path.join(__dirname, 'configs', 'playwright');
+    try {
+      const files = await fs.readdir(configsDir);
+      for (const file of files) {
+        if (file.endsWith('.js')) {
+          const providerName = path.basename(file, '.js');
+          const modulePath = path.join(configsDir, file);
+          try {
+            const fileUrl = pathToFileURL(modulePath);
+            const module = await import(fileUrl.href);
+            if (module.default) {
+              this.playwrightProviderConfigs[providerName] = module.default;
+            } else {
+              console.warn(`[ProviderRegistry] Config file ${file} does not have a default export.`);
+            }
+          } catch (importError) {
+            console.error(`[ProviderRegistry] Failed to import config file ${file}: ${importError.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[ProviderRegistry] Failed to read Playwright provider configs directory: ${error.message}`);
+      // Ensure it's an empty object on failure so subsequent checks don't break
+      this.playwrightProviderConfigs = {};
+    }
   }
 
   /**
@@ -14,6 +51,8 @@ class ProviderRegistry {
    * @param {Object} crawlerInstance - The crawler instance to use as event emitter
    */
   async initialize(crawlerInstance) {
+    await this._loadPlaywrightConfigs();
+
     // Dynamically load providers based on effective config (CLI overrides + file config)
     const effectiveProvidersConfig = configManager.getEffectiveProvidersConfig();
     const order = effectiveProvidersConfig.order || [];
@@ -54,21 +93,21 @@ class ProviderRegistry {
         return module.default;
       }
 
-      // Check if it's a Playwright provider defined in PROVIDER_CONFIGS
-      if (PROVIDER_CONFIGS[name]) {
+      // Check if it's a Playwright provider defined in the loaded configs
+      if (this.playwrightProviderConfigs[name]) {
         // Return a new class that extends GenericPlaywrightProvider
         // and is pre-configured with the specific provider's config.
         // The constructor of this ad-hoc class will receive (providerSpecificConfigFromFile, emitter)
-        // and it needs to pass (providerSpecificConfigFromFile, emitter, PROVIDER_CONFIGS[name]) to GenericPlaywrightProvider's constructor.
+        // and it needs to pass (providerSpecificConfigFromFile, emitter, this.playwrightProviderConfigs[name]) to GenericPlaywrightProvider's constructor.
         return class ConfiguredProvider extends GenericPlaywrightProvider {
           constructor(providerSpecificConfigFromFile, emitter) {
-            super(providerSpecificConfigFromFile, emitter, PROVIDER_CONFIGS[name]);
+            super(providerSpecificConfigFromFile, emitter, this.playwrightProviderConfigs[name]);
           }
         };
       }
 
       // Check for Wikimedia (another API/specific provider not using generic Playwright)
-      // This check is placed after PROVIDER_CONFIGS to allow overriding wikimedia with a config if ever needed.
+      // This check is placed after playwrightProviderConfigs to allow overriding wikimedia with a config if ever needed.
       if (name === 'wikimedia') {
         const module = await import('./wikimedia-provider.js');
         return module.default;
