@@ -716,3 +716,21 @@ The `README.md` now accurately reflects the project's capabilities, especially h
 *   **Testing and Validation**: Conduct thorough unit tests, integration tests, and end-to-end tests for all refactored providers using the generic provider framework.
 *   **Documentation**: Update all relevant project documentation (README, developer guides) to reflect the new provider architecture and explain how to add/configure new providers.
 *   **Review and Refine**: Further review the `GenericPlaywrightProvider` and configurations for any additional optimization or generalization opportunities.
+
+## Session 2025-05-24 (Refactoring Follow-up & Bug Fix)
+
+**Implemented Features:**
+- N/A (Focus on bug fixing from previous refactor)
+
+**Encountered Errors & Fixes:**
+1.  **Issue:** A warning `[Bing] Unknown full-size action type: lightbox` was observed.
+    *   **Root Cause:** The `FULL_SIZE_ACTIONS` constant in `src/providers/generic-playwright-provider.js` was incorrectly mapping uppercase action type strings (e.g., `LIGHTBOX`) to lowercase string *values* (e.g., `'lightbox'`) instead of to the actual handler *functions* (e.g., the `lightbox` function). The `getFullSizeImage` method, which looks up actions using `actionConfig.type.toUpperCase()`, was therefore unable to find the correct handler.
+    *   **Fix:** Modified `src/providers/generic-playwright-provider.js`:
+        *   Redefined the `FULL_SIZE_ACTIONS` object to map uppercase action type strings directly to their respective handler function references (e.g., `LIGHTBOX: lightbox`).
+        *   Ensured the handler functions (`direct`, `lightbox`, `detail_page`, `url_cleaning`, `url_param_decode`) are defined as standalone async functions that `FULL_SIZE_ACTIONS` can reference.
+        *   Corrected the lookup in `getFullSizeImage` to use the `FULL_SIZE_ACTIONS` constant.
+    *   **Result:** This change ensures that the `GenericPlaywrightProvider` can correctly dispatch to the configured `fullSizeAction` handlers, resolving the warning.
+
+**Next Steps (if applicable based on current task):**
+- Continue with testing and validation of the refactored Playwright providers.
+- Update documentation for the new provider architecture.

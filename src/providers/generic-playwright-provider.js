@@ -2,149 +2,153 @@ import BaseProvider from './base-provider.js';
 
 // Define strategies for getting full-size images
 const FULL_SIZE_ACTIONS = {
-  DIRECT: 'direct', // The extracted URL is already the full-size image
-  LIGHTBOX: 'lightbox', // Click a thumbnail, then find image in a lightbox
-  DETAIL_PAGE: 'detail_page', // Navigate to a detail page, then find image
-  URL_CLEANING: 'url_cleaning', // Clean parameters from the URL
-  API_CALL: 'api_call', // Make an API call (placeholder for future)
-  HOVER_AND_EXTRACT: 'hover_and_extract', // Hover an element to reveal the full image URL
-  SRCSET_PARSE: 'srcset_parse', // Specifically parse srcset and select a URL
-  URL_PARAM_DECODE: 'url_param_decode' // Extract and decode URL from a query parameter
+  DIRECT: direct, // The extracted URL is already the full-size image
+  LIGHTBOX: lightbox, // Action to handle lightbox-style image viewers
+  DETAIL_PAGE: detail_page, // Need to visit a detail page to get the full-size image
+  URL_CLEANING: url_cleaning, // The URL needs parameters removed/modified
+  URL_PARAM_DECODE: url_param_decode // The URL is encoded in a query parameter of the thumbnail URL
 };
 
-const fullSizeActions = {
-  direct: async (page, imageUrl, actionConfig, providerInstance) => {
-    providerInstance.emitLog('debug', `Full size action 'direct' for ${imageUrl}`);
-    return imageUrl;
-  },
-  lightbox: async (page, itemUrlOrContext, actionConfig, providerInstance) => {
-    // itemUrlOrContext could be the thumbnail src or a more complex object if needed
-    // For now, assume it's the URL that was associated with the clickable element.
-    providerInstance.emitLog('debug', `Full size action 'lightbox' for item related to: ${itemUrlOrContext}`);
-    const { clickTarget, imageSelectors, waitStrategy, waitDelay = 1000 } = actionConfig;
+// Handler for direct image URLs (no action needed, or simple validation)
+async function direct(page, imageUrl, actionConfig, providerInstance) {
+  providerInstance.emitLog('debug', `Full size action 'direct' for ${imageUrl}`);
+  return imageUrl;
+}
 
-    if (!clickTarget || !imageSelectors || !imageSelectors.length) {
-      providerInstance.emitLog('error', 'Lightbox action config missing clickTarget or imageSelectors.');
-      return typeof itemUrlOrContext === 'string' ? itemUrlOrContext : null;
+// Handler for lightbox-style image viewers
+async function lightbox(page, itemUrlOrContext, actionConfig, providerInstance) {
+  // itemUrlOrContext could be the thumbnail src or a more complex object if needed
+  // For now, assume it's the URL that was associated with the clickable element.
+  providerInstance.emitLog('debug', `Full size action 'lightbox' for item related to: ${itemUrlOrContext}`);
+  const { clickTarget, imageSelectors, waitStrategy, waitDelay = 1000 } = actionConfig;
+
+  if (!clickTarget || !imageSelectors || !imageSelectors.length) {
+    providerInstance.emitLog('error', 'Lightbox action config missing clickTarget or imageSelectors.');
+    return typeof itemUrlOrContext === 'string' ? itemUrlOrContext : null;
+  }
+
+  // This assumes 'clickTarget' is a selector that can be found and clicked.
+  // If 'clickTarget' is 'self', it implies the thumbnail itself was clicked to open the lightbox.
+  // The challenge is relating itemUrlOrContext back to a clickable locator if it's not the element itself.
+  // For now, this part of the logic might need refinement based on how thumbnails are collected and passed.
+  // Let's assume for now that the click that triggered the lightbox has already happened
+  // or the `itemUrlOrContext` IS the selector for the thumbnail to be clicked.
+
+  // If clickTarget is 'self', we assume the thumbnail that led to this call IS the clickTarget.
+  // This part is tricky because fetchImageUrls gives us image URLs, not necessarily locators.
+  // This needs to be re-evaluated: how do we get back to the clickable thumbnail from just its URL?
+  // For now, we'll proceed with a simplified assumption or focus on cases where the click is straightforward.
+
+  // Let's assume the click to open the lightbox has already been performed by the user or a prior step if not 'self'.
+  // If the clickTarget is a specific selector for the thumbnail:
+  // const thumbnailLocator = page.locator(clickTarget).filter({ hasText: itemUrlOrContext }); // This is a guess
+  // await thumbnailLocator.click();
+
+  providerInstance.emitLog('info', `Waiting for lightbox image using selectors: ${imageSelectors.join(', ')}`);
+
+  let fullImageUrl = null;
+  try {
+    const lightboxImageLocator = page.locator(imageSelectors.join(', ')).first();
+    if (waitStrategy === 'locator') {
+      await lightboxImageLocator.waitFor({ state: 'visible', timeout: actionConfig.timeout || 5000 });
+    } else {
+      await page.waitForTimeout(waitDelay); // Fallback to simple delay
     }
+    fullImageUrl = await lightboxImageLocator.getAttribute('src');
+    if (!fullImageUrl) {
+       fullImageUrl = await lightboxImageLocator.evaluate(node => node.currentSrc || node.src);
+    }
+  } catch (e) {
+    providerInstance.emitLog('warn', `Lightbox image not found or timed out with selectors ${imageSelectors.join(', ')}: ${e.message}`);
+    return typeof itemUrlOrContext === 'string' ? itemUrlOrContext : null; // Fallback
+  }
+  
+  providerInstance.emitLog('debug', `Lightbox extracted full image: ${fullImageUrl}`);
+  return fullImageUrl || (typeof itemUrlOrContext === 'string' ? itemUrlOrContext : null);
+}
 
-    // This assumes 'clickTarget' is a selector that can be found and clicked.
-    // If 'clickTarget' is 'self', it implies the thumbnail itself was clicked to open the lightbox.
-    // The challenge is relating itemUrlOrContext back to a clickable locator if it's not the element itself.
-    // For now, this part of the logic might need refinement based on how thumbnails are collected and passed.
-    // Let's assume for now that the click that triggered the lightbox has already happened
-    // or the `itemUrlOrContext` IS the selector for the thumbnail to be clicked.
+// Handler for detail page full-size image extraction
+async function detail_page(page, detailPageUrl, actionConfig, providerInstance) {
+  providerInstance.emitLog('debug', `Full size action 'detail_page' for ${detailPageUrl}`);
+  const { selectors, waitStrategy, waitDelay = 1500 } = actionConfig;
 
-    // If clickTarget is 'self', we assume the thumbnail that led to this call IS the clickTarget.
-    // This part is tricky because fetchImageUrls gives us image URLs, not necessarily locators.
-    // This needs to be re-evaluated: how do we get back to the clickable thumbnail from just its URL?
-    // For now, we'll proceed with a simplified assumption or focus on cases where the click is straightforward.
+  if (!selectors || !selectors.length) {
+    providerInstance.emitLog('error', 'Detail page action config missing selectors.');
+    return detailPageUrl;
+  }
 
-    // Let's assume the click to open the lightbox has already been performed by the user or a prior step if not 'self'.
-    // If the clickTarget is a specific selector for the thumbnail:
-    // const thumbnailLocator = page.locator(clickTarget).filter({ hasText: itemUrlOrContext }); // This is a guess
-    // await thumbnailLocator.click();
-
-    providerInstance.emitLog('info', `Waiting for lightbox image using selectors: ${imageSelectors.join(', ')}`);
-
-    let fullImageUrl = null;
-    try {
-      const lightboxImageLocator = page.locator(imageSelectors.join(', ')).first();
-      if (waitStrategy === 'locator') {
-        await lightboxImageLocator.waitFor({ state: 'visible', timeout: actionConfig.timeout || 5000 });
-      } else {
-        await page.waitForTimeout(waitDelay); // Fallback to simple delay
-      }
-      fullImageUrl = await lightboxImageLocator.getAttribute('src');
-      if (!fullImageUrl) {
-         fullImageUrl = await lightboxImageLocator.evaluate(node => node.currentSrc || node.src);
-      }
-    } catch (e) {
-      providerInstance.emitLog('warn', `Lightbox image not found or timed out with selectors ${imageSelectors.join(', ')}: ${e.message}`);
-      return typeof itemUrlOrContext === 'string' ? itemUrlOrContext : null; // Fallback
+  try {
+    await page.goto(detailPageUrl, { waitUntil: actionConfig.navigationWaitUntil || 'networkidle', timeout: actionConfig.navigationTimeout || 30000 });
+    providerInstance.emitLog('info', `Navigated to detail page: ${detailPageUrl}`);
+    
+    const imageLocator = page.locator(selectors.join(', ')).first();
+    if (waitStrategy === 'locator') {
+      await imageLocator.waitFor({ state: 'visible', timeout: actionConfig.timeout || 7000 });
+    } else {
+      await page.waitForTimeout(waitDelay);
     }
     
-    providerInstance.emitLog('debug', `Lightbox extracted full image: ${fullImageUrl}`);
-    return fullImageUrl || (typeof itemUrlOrContext === 'string' ? itemUrlOrContext : null);
-  },
-  detail_page: async (page, detailPageUrl, actionConfig, providerInstance) => {
-    providerInstance.emitLog('debug', `Full size action 'detail_page' for ${detailPageUrl}`);
-    const { selectors, waitStrategy, waitDelay = 1500 } = actionConfig;
-
-    if (!selectors || !selectors.length) {
-      providerInstance.emitLog('error', 'Detail page action config missing selectors.');
-      return detailPageUrl;
-    }
-
-    try {
-      await page.goto(detailPageUrl, { waitUntil: actionConfig.navigationWaitUntil || 'networkidle', timeout: actionConfig.navigationTimeout || 30000 });
-      providerInstance.emitLog('info', `Navigated to detail page: ${detailPageUrl}`);
-      
-      const imageLocator = page.locator(selectors.join(', ')).first();
-      if (waitStrategy === 'locator') {
-        await imageLocator.waitFor({ state: 'visible', timeout: actionConfig.timeout || 7000 });
-      } else {
-        await page.waitForTimeout(waitDelay);
+    let fullImageUrl = await imageLocator.getAttribute('src');
+    if (!fullImageUrl) fullImageUrl = await imageLocator.evaluate(node => node.currentSrc || node.src);
+    
+    // Handle srcset if present
+    if (!fullImageUrl) {
+      const srcset = await imageLocator.getAttribute('srcset');
+      if (srcset) {
+        providerInstance.emitLog('debug', `Found srcset: ${srcset}`);
+        // Basic parsing: take the last URL, often highest resolution
+        const sources = srcset.split(',').map(s => s.trim().split(' ')[0]);
+        fullImageUrl = sources.pop(); 
       }
-      
-      let fullImageUrl = await imageLocator.getAttribute('src');
-      if (!fullImageUrl) fullImageUrl = await imageLocator.evaluate(node => node.currentSrc || node.src);
-      
-      // Handle srcset if present
-      if (!fullImageUrl) {
-        const srcset = await imageLocator.getAttribute('srcset');
-        if (srcset) {
-          providerInstance.emitLog('debug', `Found srcset: ${srcset}`);
-          // Basic parsing: take the last URL, often highest resolution
-          const sources = srcset.split(',').map(s => s.trim().split(' ')[0]);
-          fullImageUrl = sources.pop(); 
-        }
-      }
-
-      providerInstance.emitLog('debug', `Detail page extracted full image: ${fullImageUrl}`);
-      return fullImageUrl || detailPageUrl;
-    } catch (e) {
-      providerInstance.emitLog('warn', `Failed to get image from detail page ${detailPageUrl}: ${e.message}`);
-      return detailPageUrl; // Fallback
     }
-  },
-  url_cleaning: async (page, imageUrl, actionConfig, providerInstance) => {
-    providerInstance.emitLog('debug', `Full size action 'url_cleaning' for ${imageUrl}`);
-    const { removeParams } = actionConfig;
-    if (!removeParams || !removeParams.length) return imageUrl;
 
-    try {
-      const urlObj = new URL(imageUrl);
-      removeParams.forEach(param => urlObj.searchParams.delete(param));
-      const cleanedUrl = urlObj.toString();
-      providerInstance.emitLog('debug', `Cleaned URL: ${cleanedUrl}`);
-      return cleanedUrl;
-    } catch (e) {
-      providerInstance.emitLog('warn', `Error cleaning URL ${imageUrl}: ${e.message}`);
-      return imageUrl;
-    }
-  },
-  url_param_decode: async (page, imageUrl, actionConfig, providerInstance) => {
-    providerInstance.emitLog('debug', `Full size action 'url_param_decode' for ${imageUrl}`);
-    const { paramName, decode } = actionConfig;
-    if (!paramName) return imageUrl;
-
-    try {
-      const urlObj = new URL(imageUrl);
-      const encodedParamValue = urlObj.searchParams.get(paramName);
-      if (encodedParamValue) {
-        const decodedUrl = decode ? decodeURIComponent(encodedParamValue) : encodedParamValue;
-        providerInstance.emitLog('info', `Extracted and decoded URL from param '${paramName}': ${decodedUrl}`);
-        return decodedUrl;
-      }
-      providerInstance.emitLog('warn', `Parameter '${paramName}' not found in ${imageUrl}`);
-      return imageUrl; // Fallback if param not found
-    } catch (e) {
-      providerInstance.emitLog('error', `Error processing URL_PARAM_DECODE for ${imageUrl}: ${e.message}`);
-      return imageUrl; // Fallback on error
-    }
+    providerInstance.emitLog('debug', `Detail page extracted full image: ${fullImageUrl}`);
+    return fullImageUrl || detailPageUrl;
+  } catch (e) {
+    providerInstance.emitLog('warn', `Failed to get image from detail page ${detailPageUrl}: ${e.message}`);
+    return detailPageUrl; // Fallback
   }
-};
+}
+
+// Handler for URL cleaning (remove parameters)
+async function url_cleaning(page, imageUrl, actionConfig, providerInstance) {
+  providerInstance.emitLog('debug', `Full size action 'url_cleaning' for ${imageUrl}`);
+  const { removeParams } = actionConfig;
+  if (!removeParams || !removeParams.length) return imageUrl;
+
+  try {
+    const urlObj = new URL(imageUrl);
+    removeParams.forEach(param => urlObj.searchParams.delete(param));
+    const cleanedUrl = urlObj.toString();
+    providerInstance.emitLog('debug', `Cleaned URL: ${cleanedUrl}`);
+    return cleanedUrl;
+  } catch (e) {
+    providerInstance.emitLog('warn', `Error cleaning URL ${imageUrl}: ${e.message}`);
+    return imageUrl;
+  }
+}
+
+// Handler for URL parameter decoding
+async function url_param_decode(page, imageUrl, actionConfig, providerInstance) {
+  providerInstance.emitLog('debug', `Full size action 'url_param_decode' for ${imageUrl}`);
+  const { paramName, decode } = actionConfig;
+  if (!paramName) return imageUrl;
+
+  try {
+    const urlObj = new URL(imageUrl);
+    const encodedParamValue = urlObj.searchParams.get(paramName);
+    if (encodedParamValue) {
+      const decodedUrl = decode ? decodeURIComponent(encodedParamValue) : encodedParamValue;
+      providerInstance.emitLog('info', `Extracted and decoded URL from param '${paramName}': ${decodedUrl}`);
+      return decodedUrl;
+    }
+    providerInstance.emitLog('warn', `Parameter '${paramName}' not found in ${imageUrl}`);
+    return imageUrl; // Fallback if param not found
+  } catch (e) {
+    providerInstance.emitLog('error', `Error processing URL_PARAM_DECODE for ${imageUrl}: ${e.message}`);
+    return imageUrl; // Fallback on error
+  }
+}
 
 export default class GenericPlaywrightProvider extends BaseProvider {
   constructor(config, emitter, providerConfig) {
@@ -483,7 +487,7 @@ export default class GenericPlaywrightProvider extends BaseProvider {
 
     if (FULL_SIZE_ACTIONS[actionType]) {
       try {
-        return await fullSizeActions[actionType](page, imageUrlOrContext, actionConfig, this);
+        return await FULL_SIZE_ACTIONS[actionType](page, imageUrlOrContext, actionConfig, this);
       } catch (e) {
         this.emitLog('error', `Error during full-size action '${actionType}' for ${imageUrlOrContext}: ${e.message}`);
         return imageUrlOrContext; // Fallback
