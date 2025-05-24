@@ -16,6 +16,26 @@ Based on analysis of the existing codebase, providers fall into two categories:
 
 These providers use HTTP APIs and don't require browser automation. They should remain unchanged.
 
+## Playwright Best Practices Analysis
+
+After reviewing the official Playwright input documentation, I've identified several areas where our current providers can be improved and where the generic provider should follow best practices:
+
+### Current Issues in Existing Providers
+
+1. **Deprecated Methods**: Using `page.isVisible()` and `page.click()` instead of modern locator-based methods
+2. **Non-Robust Element Selection**: Using `page.evaluate()` for element interaction instead of locators
+3. **Manual Scrolling**: Using `page.evaluate('window.scrollTo...')` instead of Playwright's built-in scrolling
+4. **Timeout Handling**: Inconsistent timeout patterns
+5. **Element Waiting**: Not using proper element waiting strategies
+
+### Best Practices to Implement
+
+1. **Use Locators**: Replace direct page methods with `page.locator()` and `page.getByRole()`
+2. **Automatic Scrolling**: Let Playwright handle scrolling automatically when possible
+3. **Proper Element Waiting**: Use `locator.waitFor()` and web-first assertions
+4. **Robust Clicking**: Use locator-based clicking with proper actionability checks
+5. **Better Error Handling**: Use Playwright's built-in retry mechanisms
+
 #### 2. Playwright-Based Providers (Target for Refactoring)
 - **Google** (`google-provider.js`) - Web scraping with complex scrolling
 - **Bing** (`bing-provider.js`) - Web scraping with lightbox interaction
@@ -225,22 +245,39 @@ The generic provider will implement these key patterns:
    - Detail page navigation
    - URL cleaning/parameter removal
 
-#### 3.2 Action System for Full-Size Images
+#### 3.2 Action System for Full-Size Images (Following Playwright Best Practices)
 
 ```javascript
 const FULL_SIZE_ACTIONS = {
   direct: (page, url) => url,
   
   lightbox: async (page, url, config) => {
-    // Click thumbnail, wait for lightbox, extract image
+    // Use locator-based clicking with proper waiting
+    const thumbnailLocator = page.locator(config.clickTarget).filter({ hasText: url });
+    await thumbnailLocator.click(); // Playwright handles actionability automatically
+    
+    // Wait for lightbox to appear using locators
+    const lightboxImage = page.locator(config.imageSelectors.join(', ')).first();
+    await lightboxImage.waitFor({ state: 'visible' });
+    
+    return await lightboxImage.getAttribute('src');
   },
   
   detail_page: async (page, url, config) => {
-    // Navigate to detail page, find full-size image
+    // Navigate to detail page and use locators to find image
+    await page.goto(url, { waitUntil: 'networkidle' });
+    
+    const imageLocator = page.locator(config.selectors.join(', ')).first();
+    await imageLocator.waitFor({ state: 'visible' });
+    
+    return await imageLocator.getAttribute('src');
   },
   
   url_cleaning: (page, url, config) => {
     // Remove size parameters from URL
+    const urlObj = new URL(url);
+    config.removeParams?.forEach(param => urlObj.searchParams.delete(param));
+    return urlObj.toString();
   }
 };
 ```
@@ -296,7 +333,7 @@ Once all configurations are working:
 
 ## Configuration Schema
 
-### Provider Configuration Structure
+### Provider Configuration Structure (Updated with Playwright Best Practices)
 
 ```javascript
 {
@@ -306,14 +343,16 @@ Once all configurations are working:
     images?: string,              // Image element selector
     thumbnails?: string,          // Thumbnail link selector
     imageLinks?: string,          // Detail page link selector
-    consentButtons?: string[],    // Cookie consent selectors
+    consentButtons?: string[],    // Cookie consent selectors (use getByRole when possible)
     showMoreButton?: string,      // Load more results selector
     lightboxImages?: string[]     // Lightbox image selectors
   },
   scrolling: {
+    strategy: 'auto' | 'manual' | 'infinite_scroll',  // Scrolling strategy
     maxScrolls: number,           // Maximum scroll attempts
     scrollDelay: number,          // Delay between scrolls (ms)
-    noNewImagesRetries: number    // Stop after N scrolls with no new images
+    noNewImagesRetries: number,   // Stop after N scrolls with no new images
+    useAutoScroll?: boolean       // Let Playwright handle scrolling automatically
   },
   imageExtraction: {
     type: 'attribute' | 'json_attribute' | 'nested_attribute' | 'link_collection',
@@ -322,15 +361,74 @@ Once all configurations are working:
     jsonPath?: string,           // Path in JSON attribute
     selector?: string,           // Nested element selector
     filters?: string[],          // URL filters (! prefix for exclusion)
-    fallback?: object            // Fallback extraction method
+    fallback?: object,           // Fallback extraction method
+    waitStrategy?: 'networkidle' | 'domcontentloaded' | 'load'  // Wait strategy for images
   },
   fullSizeActions: {
     type: 'direct' | 'lightbox' | 'detail_page' | 'url_cleaning',
     clickTarget?: string,        // What to click for lightbox
-    waitDelay?: number,          // Wait time after action
+    waitStrategy?: 'locator' | 'timeout' | 'networkidle',  // How to wait for elements
+    waitDelay?: number,          // Wait time after action (fallback)
     imageSelectors?: string[],   // Selectors for full-size image
     selectors?: string[],        // Alternative name for imageSelectors
-    urlTransforms?: object[]     // URL transformation rules
+    urlTransforms?: object[],    // URL transformation rules
+    removeParams?: string[]      // URL parameters to remove for url_cleaning
+  },
+  playwrightOptions?: {          // Playwright-specific options
+    useLocators: boolean,        // Use modern locator-based methods (default: true)
+    retryOptions?: {             // Retry configuration
+      retries: number,
+      timeout: number
+    },
+    waitOptions?: {              // Default wait options
+      timeout: number,
+      state: 'visible' | 'attached' | 'detached' | 'hidden'
+    }
+  }
+}
+```
+
+### Example Configuration with Best Practices
+
+```javascript
+google: {
+  name: 'Google',
+  searchUrl: 'https://www.google.com/imghp?q={query}&safe=active&hl=en',
+  selectors: {
+    images: 'img[data-src], img[src^="http"]',
+    consentButtons: [
+      'button[aria-label="Accept all"]',
+      'button[aria-label="Alles akzeptieren"]',
+      'div[role="dialog"] button:first-child'
+    ],
+    showMoreButton: 'input[type="button"][value*="more results" i]'
+  },
+  scrolling: {
+    strategy: 'infinite_scroll',
+    maxScrolls: 20,
+    scrollDelay: 2000,
+    noNewImagesRetries: 3,
+    useAutoScroll: true  // Let Playwright handle scrolling when possible
+  },
+  imageExtraction: {
+    type: 'attribute',
+    attributes: ['data-src', 'src'],
+    filters: ['!gstatic.com/images', '!googlelogo'],
+    waitStrategy: 'networkidle'
+  },
+  fullSizeActions: {
+    type: 'direct'
+  },
+  playwrightOptions: {
+    useLocators: true,
+    retryOptions: {
+      retries: 3,
+      timeout: 30000
+    },
+    waitOptions: {
+      timeout: 10000,
+      state: 'visible'
+    }
   }
 }
 ```
