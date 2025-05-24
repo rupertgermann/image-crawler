@@ -22,12 +22,12 @@
   --border-radius-sm: 4px;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  --font-size-sm: 0.775rem;
-  --font-size-base: 0.775rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 0.875rem;
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
-  --font-size-input: 0.775rem;
-  --font-size-log: 0.775rem;
+  --font-size-input: 0.875rem;
+  --font-size-log: 0.675rem;
   --line-height-base: 1.5;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);

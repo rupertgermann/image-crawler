@@ -52,11 +52,28 @@ const { readdir } = require('fs/promises');
             const providersDir = path.join(__dirname, '..', 'src', 'providers');
             const files = await readdir(providersDir);
             
-            // Filter for provider files (ends with -provider.js)
-            const providerFiles = files.filter(file => 
-                file.endsWith('-provider.js') && 
-                !['base-provider.js', 'provider-registry.js'].includes(file)
-            );
+            // Get enabled providers from config
+            const config = configManager.getConfig();
+            const enabledProviders = new Set();
+            
+            // Add providers that are explicitly enabled in config
+            if (config.providers) {
+                for (const [providerId, providerConfig] of Object.entries(config.providers)) {
+                    if (providerConfig?.enabled === true) {
+                        enabledProviders.add(providerId);
+                    }
+                }
+            }
+            
+            // Filter for provider files (ends with -provider.js) and check if enabled
+            const providerFiles = files.filter(file => {
+                if (!file.endsWith('-provider.js') || 
+                    ['base-provider.js', 'provider-registry.js'].includes(file)) {
+                    return false;
+                }
+                const providerId = file.replace('-provider.js', '');
+                return enabledProviders.has(providerId);
+            });
             
             // Extract provider IDs and sort alphabetically
             const providers = providerFiles
