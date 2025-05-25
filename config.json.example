@@ -80,6 +80,27 @@
       "enabled": true,
       "maxResults": 30,
       "comment": "Free stock photos from Reshot.com"
+    },
+    "adobestock": {
+      "enabled": false,
+      "displayName": "Adobe Stock",
+      "apiKey": "YOUR_ADOBE_STOCK_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key from Adobe Developer Console. Provides watermarked previews via API."
+    },
+    "gettyimages": {
+      "enabled": false,
+      "displayName": "Getty Images",
+      "apiKey": "YOUR_GETTY_IMAGES_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key from Getty Images developer portal. Provides watermarked previews via API."
+    },
+    "dreamstime": {
+      "enabled": false,
+      "displayName": "Dreamstime.com",
+      "apiKey": "YOUR_DREAMSTIME_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key. API documentation access must be requested from Dreamstime."
     }
   },
   "logLevel": "INFO"

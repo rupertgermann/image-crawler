@@ -394,13 +394,70 @@ async function handleDriveSelection() {
 async function main() {
   try {
     // Set up default command (interactive mode)
-    if (process.argv.length <= 2) {
-      await program.parseAsync(['', '', 'interactive']);
-    } else {
-      await program.parseAsync(process.argv);
-    }
+    // if (process.argv.length <= 2) {
+    //   await program.parseAsync(['', '', 'interactive']);
+    // } else {
+    //   await program.parseAsync(process.argv);
+    // }
+
+    // Direct invocation of PlaywrightCrawler for testing
+    await configManager.init(); // Ensure configuration is loaded
+    // Explicitly set log level for debugging this provider
+    Logger.setLevel('TRACE'); // Force TRACE level for maximum verbosity
+    Logger.info('Log level set to TRACE for direct testing.');
+    Logger.info('Starting web mode directly for testing...');
+    Logger.trace('Trace: About to get config from configManager.');
+    const config = configManager.getConfig();
+    Logger.trace(`Trace: Config loaded: ${JSON.stringify(config)}`);
+    Logger.trace('Trace: About to import DEFAULT_CONFIG.');
+    const { DEFAULT_CONFIG } = await import('./utils/config.js');
+    Logger.trace('Trace: DEFAULT_CONFIG imported.');
+
+    const testOptions = {
+      ...DEFAULT_CONFIG,
+      ...config,
+      query: "landscapes",
+      outputDir: "./downloaded_images",
+      provider: "publicdomainpictures", // USE LOWERCASE
+      maxDownloads: 5, // Limit downloads for testing
+      headless: true, // Run in headless mode for testing
+      // Other options can be added here if needed
+    };
+    
+    // Ensure output directory exists
+    await fs.ensureDir(testOptions.outputDir);
+
+    Logger.debug('Direct crawler options:', JSON.stringify(testOptions, null, 2));
+    Logger.trace('Trace: About to instantiate PlaywrightCrawler.');
+    const crawler = new PlaywrightCrawler(testOptions);
+    Logger.trace('Trace: PlaywrightCrawler instantiated.');
+
+    // Set up listeners for events from the crawler
+    crawler.on('log', (level, message) => {
+      if (Logger[level]) {
+        Logger[level](message);
+      } else {
+        Logger.info(`[CRAWLER EMIT (${level})] ${message}`); // Fallback for unknown levels
+      }
+    });
+    crawler.on('progress', (progressData) => {
+      Logger.info(`[CRAWLER PROGRESS] ${JSON.stringify(progressData)}`);
+    });
+    crawler.on('complete', (summary) => {
+      Logger.info(`[CRAWLER COMPLETE] ${JSON.stringify(summary)}`);
+    });
+    crawler.on('error', (errorData) => {
+      Logger.error(`[CRAWLER ERROR] ${errorData.message}`, errorData.details);
+    });
+
+    Logger.info('Starting web crawler for testing PublicDomainPictures.net...');
+    await crawler.start();
+    Logger.info('Web crawler test completed.');
+
   } catch (error) {
-    Logger.error('An unexpected error occurred:', error);
+    Logger.error('An unexpected error occurred during direct crawl:', error.message);
+    Logger.debug('Error details:', error);
+    Logger.debug('Stack trace:', error.stack);
     process.exit(1);
   }
 }

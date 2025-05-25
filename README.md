@@ -46,7 +46,10 @@ Here's a glimpse of the Image Crawler Electron application in action:
   - Deduplicate images by content hash (skips existing files)
 
 - **Web Mode**: Download images from multiple sources
-  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, FreeRangeStock, PublicDomainPictures.net, Reshot, and Shutterstock (fetches watermarked previews).
+  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, FreeRangeStock, PublicDomainPictures.net, Reshot, Shutterstock (fetches watermarked previews), Adobe Stock (`adobestock`), Getty Images (`gettyimages`), and Dreamstime.com (`dreamstime`).
+  - Adobe Stock: Supports API key access for searching and retrieving watermarked previews. See `config.json.example` for API key configuration.
+  - Getty Images: Supports API key access for searching and retrieving watermarked previews. See `config.json.example` for API key configuration.
+  - Dreamstime.com: Setup for API access (requires API key and documentation from Dreamstime). See `config.json.example`.
   - Search by keyword with advanced filters (some providers)
   - Safe search (enabled by default where applicable)
   - Headless browser mode option for web crawling (configurable in CLI, default in GUI for some operations)
@@ -352,7 +355,7 @@ npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types j
 - `--file-types <types>`: Comma-separated list of file extensions (default: `jpg,jpeg,png,gif,webp`)
 - `--headless`: Run browser in headless mode (default: `true`)
 - `--timeout <ms>`: Browser operation timeout in milliseconds (default: `30000`)
-- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`, `stocksnap`, `shutterstock`. Default is 'all' configured providers.
+- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`, `stocksnap`, `shutterstock`, `adobestock`, `gettyimages`, `dreamstime`. Default is 'all' configured providers.
 
 
 
