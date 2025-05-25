@@ -271,8 +271,9 @@ class ConfigManager {
    * overriding the enabled status from config.json for a single run.
    * @param {string[]|null} providers - Array of provider names, or null to clear overrides.
    */
-  setCliProviderOverrides(providers) {
-    this.cliProviderOverrides = providers;
+  setCliProviderOverrides(providerName) {
+    // Ensure the stored override name is lowercase for consistent matching
+    this.cliProviderOverrides = providerName ? providerName.toLowerCase() : null;
   }
 
   /**
