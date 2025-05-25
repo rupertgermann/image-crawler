@@ -6,7 +6,13 @@ import configManager from '../utils/config.js';
 import GenericPlaywrightProvider from './generic-playwright-provider.js';
 import AdobeStockProvider from './adobestock-provider.js';
 import GettyImagesProvider from './gettyimages-provider.js';
-import DreamstimeProvider from './dreamstime-provider.js'; // Added import
+import DreamstimeProvider from './dreamstime-provider.js';
+import IStockProvider from './istock-provider.js';
+import Px500Provider from './500px-provider.js';
+import StocksyProvider from './stocksy-provider.js';
+import AlamyProvider from './alamy-provider.js';
+import BigstockProvider from './bigstock-provider.js';
+import Pond5Provider from './pond5-provider.js'; // Added import
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,7 +69,7 @@ class ProviderRegistry {
 
     const playwrightProviderNames = Object.keys(this.playwrightProviderConfigs);
     console.log(`[ProviderRegistry DEBUG] Playwright provider names from loaded configs: ${playwrightProviderNames.join(', ')}`);
-    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime']; // Added dreamstime
+    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime', 'istock', '500px', 'stocksy', 'alamy', 'bigstock', 'pond5']; // Added pond5
     const allKnownProviderNames = [...new Set([...playwrightProviderNames, ...apiProviderNames])];
     console.log(`[ProviderRegistry DEBUG] All known provider names for initialization: ${allKnownProviderNames.join(', ')}`);
 
@@ -128,9 +134,33 @@ class ProviderRegistry {
         console.log(`[ProviderRegistry DEBUG] Loading Dreamstime (API) provider class.`);
         return DreamstimeProvider; // DreamstimeProvider is already imported
       }
+      if (name === 'istock') { // Added case for istock
+        console.log(`[ProviderRegistry DEBUG] Loading IStock (via Getty API) provider class.`);
+        return IStockProvider; // IStockProvider is already imported
+      }
+      if (name === '500px') { // Added case for 500px
+        console.log(`[ProviderRegistry DEBUG] Loading 500px (API) provider class.`);
+        return Px500Provider; // Px500Provider is already imported
+      }
+      if (name === 'stocksy') { // Added case for stocksy
+        console.log(`[ProviderRegistry DEBUG] Loading Stocksy (API) provider class.`);
+        return StocksyProvider; // StocksyProvider is already imported
+      }
+      if (name === 'alamy') { // Added case for alamy
+        console.log(`[ProviderRegistry DEBUG] Loading Alamy (API) provider class.`);
+        return AlamyProvider; // AlamyProvider is already imported
+      }
+      if (name === 'bigstock') { // Added case for bigstock
+        console.log(`[ProviderRegistry DEBUG] Loading Bigstock (API/Scraping) provider class.`);
+        return BigstockProvider; // BigstockProvider is already imported
+      }
+      if (name === 'pond5') { // Added case for pond5
+        console.log(`[ProviderRegistry DEBUG] Loading Pond5 (API) provider class.`);
+        return Pond5Provider; // Pond5Provider is already imported
+      }
 
       // Check if it's a Playwright provider defined in the loaded configs
-      // This check should come AFTER specific named providers like adobestock, gettyimages, and dreamstime
+      // This check should come AFTER specific named providers like adobestock, gettyimages, dreamstime, istock, 500px, stocksy, alamy, bigstock, and pond5
       if (this.playwrightProviderConfigs[name]) {
         console.log(`[ProviderRegistry DEBUG] Found '${name}' in playwrightProviderConfigs. Creating ConfiguredProvider.`);
         // Capture the specific provider's configuration from the ProviderRegistry instance
@@ -190,7 +220,7 @@ class ProviderRegistry {
     // which calls _loadPlaywrightConfigs(). If called standalone, _loadPlaywrightConfigs might be needed.
     // For simplicity, assuming initialize() is the entry point that populates this.
     const playwrightProviderNames = Object.keys(this.playwrightProviderConfigs);
-    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime']; // Consistent list of API providers
+    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime', 'istock', '500px', 'stocksy', 'alamy', 'bigstock', 'pond5']; // Consistent list of API providers
     // Combine, ensure uniqueness, and sort for consistent UI presentation
     return [...new Set([...playwrightProviderNames, ...apiProviderNames])].sort();
   }

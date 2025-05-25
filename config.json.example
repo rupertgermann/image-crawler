@@ -101,6 +101,48 @@
       "apiKey": "YOUR_DREAMSTIME_API_KEY",
       "maxResults": 30,
       "notes": "Requires an API key. API documentation access must be requested from Dreamstime."
+    },
+    "istock": {
+      "enabled": false,
+      "displayName": "iStock (via Getty API)",
+      "apiKey": "YOUR_GETTY_IMAGES_API_KEY",
+      "maxResults": 30,
+      "notes": "Uses the Getty Images API. Requires the same API key as Getty Images."
+    },
+    "500px": {
+      "enabled": false,
+      "displayName": "500px",
+      "apiKey": "YOUR_500PX_CONSUMER_KEY",
+      "maxResults": 20,
+      "notes": "Requires a Consumer Key for the (legacy) 500px API."
+    },
+    "stocksy": {
+      "enabled": false,
+      "displayName": "Stocksy",
+      "apiKey": "YOUR_STOCKSY_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key. API documentation may need to be requested from Stocksy."
+    },
+    "alamy": {
+      "enabled": false,
+      "displayName": "Alamy",
+      "apiKey": "YOUR_ALAMY_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key. API documentation at https://api-reference.alamy.com/ (requires JavaScript)."
+    },
+    "bigstock": {
+      "enabled": false,
+      "displayName": "Bigstock",
+      "apiKey": "YOUR_BIGSTOCK_API_KEY_IF_AVAILABLE",
+      "maxResults": 30,
+      "notes": "API documentation not readily found. May require direct contact with Bigstock or be scraping-only."
+    },
+    "pond5": {
+      "enabled": false,
+      "displayName": "Pond5",
+      "apiKey": "YOUR_POND5_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key. API documentation needs to be requested from Pond5 (https://www.pond5.com/api). Check if API is photo-specific or general media."
     }
   },
   "logLevel": "INFO"
