@@ -16,11 +16,16 @@ Image Crawler was created to provide a simple, yet powerful and unified interfac
 
 Here's a glimpse of the Image Crawler Electron application in action:
 
-**Light Mode:**
-![Image Crawler Light Mode](./docs/readme_images/image_crawler_light.png)
-
-**Dark Mode:**
-![Image Crawler Dark Mode](./docs/readme_images/image_crawler_dark.png)
+<table>
+  <tr>
+    <td align="center"><b>Light Mode</b></td>
+    <td align="center"><b>Dark Mode</b></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/readme_images/image_crawler_light.png" alt="Image Crawler Light Mode" width="400"></td>
+    <td><img src="./docs/readme_images/image_crawler_dark.png" alt="Image Crawler Dark Mode" width="400"></td>
+  </tr>
+</table>
 
 
 ## Features
