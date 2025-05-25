@@ -728,3 +728,15 @@ The `README.md` now accurately reflects the project's capabilities, especially h
     *   Verify 'All Providers' selection activates multiple providers.
     *   Specifically test 'Bing' to check if the `Unknown full-size action type: lightbox` warning persists after this fix.
 *   If the Bing warning is still present, further investigation will be needed as per the original plan (e.g., adding more logging around `FULL_SIZE_ACTIONS` in `generic-playwright-provider.js`).
+
+**Implemented Features (Part 2 - Bing Warning Fix Attempt):**
+
+*   **Uppercase Action Type for Lookup:**
+    *   Identified that `actionConfig.type` (e.g., 'lightbox' from `bing.js`) was not being converted to uppercase before being used as a key for the `FULL_SIZE_ACTIONS` map in `src/providers/generic-playwright-provider.js` (which uses uppercase keys like 'LIGHTBOX').
+    *   Modified the `getFullSizeImage` method to convert `actionConfig.type` to `actionConfig.type.toUpperCase()` before the lookup.
+    *   This is intended to resolve the `[WARN]: [Bing] Unknown full-size action type: lightbox` warning.
+
+**Next Steps:**
+
+*   User to re-test with Bing to confirm the warning is resolved.
+*   If the warning persists, add more detailed logging to `getFullSizeImage` to inspect `actionConfig`, the derived `actionType`, and the keys of `FULL_SIZE_ACTIONS` at runtime.

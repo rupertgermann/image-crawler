@@ -483,7 +483,7 @@ export default class GenericPlaywrightProvider extends BaseProvider {
     }
 
     const actionConfig = this.providerConfig.fullSizeActions;
-    const actionType = actionConfig.type;
+    const actionType = actionConfig.type.toUpperCase(); // Convert to uppercase
 
     if (FULL_SIZE_ACTIONS[actionType]) {
       try {
