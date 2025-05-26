@@ -12,7 +12,8 @@ import Px500Provider from './500px-provider.js';
 import StocksyProvider from './stocksy-provider.js';
 import AlamyProvider from './alamy-provider.js';
 import BigstockProvider from './bigstock-provider.js';
-import Pond5Provider from './pond5-provider.js'; // Added import
+import Pond5Provider from './pond5-provider.js';
+import DepositphotosProvider from './depositphotos-provider.js'; // Added import
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +70,7 @@ class ProviderRegistry {
 
     const playwrightProviderNames = Object.keys(this.playwrightProviderConfigs);
     console.log(`[ProviderRegistry DEBUG] Playwright provider names from loaded configs: ${playwrightProviderNames.join(', ')}`);
-    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime', 'istock', '500px', 'stocksy', 'alamy', 'bigstock', 'pond5']; // Added pond5
+    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime', 'istock', '500px', 'stocksy', 'alamy', 'bigstock', 'pond5', 'depositphotos']; // Added depositphotos
     const allKnownProviderNames = [...new Set([...playwrightProviderNames, ...apiProviderNames])];
     console.log(`[ProviderRegistry DEBUG] All known provider names for initialization: ${allKnownProviderNames.join(', ')}`);
 
@@ -158,9 +159,13 @@ class ProviderRegistry {
         console.log(`[ProviderRegistry DEBUG] Loading Pond5 (API) provider class.`);
         return Pond5Provider; // Pond5Provider is already imported
       }
+      if (name === 'depositphotos') { // Added case for depositphotos
+        console.log(`[ProviderRegistry DEBUG] Loading Depositphotos (API) provider class.`);
+        return DepositphotosProvider; // DepositphotosProvider is already imported
+      }
 
       // Check if it's a Playwright provider defined in the loaded configs
-      // This check should come AFTER specific named providers like adobestock, gettyimages, dreamstime, istock, 500px, stocksy, alamy, bigstock, and pond5
+      // This check should come AFTER specific named providers like adobestock, gettyimages, dreamstime, istock, 500px, stocksy, alamy, bigstock, pond5, and depositphotos
       if (this.playwrightProviderConfigs[name]) {
         console.log(`[ProviderRegistry DEBUG] Found '${name}' in playwrightProviderConfigs. Creating ConfiguredProvider.`);
         // Capture the specific provider's configuration from the ProviderRegistry instance
@@ -220,7 +225,7 @@ class ProviderRegistry {
     // which calls _loadPlaywrightConfigs(). If called standalone, _loadPlaywrightConfigs might be needed.
     // For simplicity, assuming initialize() is the entry point that populates this.
     const playwrightProviderNames = Object.keys(this.playwrightProviderConfigs);
-    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime', 'istock', '500px', 'stocksy', 'alamy', 'bigstock', 'pond5']; // Consistent list of API providers
+    const apiProviderNames = ['pexels', 'flickr', 'wikimedia', 'adobestock', 'gettyimages', 'dreamstime', 'istock', '500px', 'stocksy', 'alamy', 'bigstock', 'pond5', 'depositphotos']; // Consistent list of API providers
     // Combine, ensure uniqueness, and sort for consistent UI presentation
     return [...new Set([...playwrightProviderNames, ...apiProviderNames])].sort();
   }

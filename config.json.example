@@ -143,6 +143,13 @@
       "apiKey": "YOUR_POND5_API_KEY",
       "maxResults": 30,
       "notes": "Requires an API key. API documentation needs to be requested from Pond5 (https://www.pond5.com/api). Check if API is photo-specific or general media."
+    },
+    "depositphotos": {
+      "enabled": false,
+      "displayName": "Depositphotos",
+      "apiKey": "YOUR_DEPOSITPHOTOS_API_KEY",
+      "maxResults": 30,
+      "notes": "Requires an API key. API documentation needs to be requested from Depositphotos (https://depositphotos.com/api-suite.html)."
     }
   },
   "logLevel": "INFO"
