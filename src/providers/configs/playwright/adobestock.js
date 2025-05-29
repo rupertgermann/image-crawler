@@ -20,7 +20,7 @@ export default {
   },
   fullSizeActions: {
     type: 'detail_page',
-    selectors: ['img[data-t="details-thumbnail-image"]'], // Target the img element for JPEG
+    selectors: ['img[data-t="details-thumbnail-image"]'], // Target the high-resolution preview image
     attribute: 'src',
     waitStrategy: 'locator', // Wait for the selector to be visible
     waitDelay: 2000, // Wait 2 seconds after navigation before extracting

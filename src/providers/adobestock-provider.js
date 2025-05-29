@@ -132,9 +132,12 @@ class AdobeStockProvider extends BaseProvider {
         this.emitLog('info', `Scraping mode: Found ${imageUrls.length} images from Adobe Stock.`);
         
         // Transform the URLs into the expected format
+        // The download utility will use fullSizeUrl as the URL to download, or fall back to thumbnailUrl
+        // In scraping mode, we must set fullSizeUrl to the detail page URL so it will be processed by getFullSizeImage
         return imageUrls.map(url => ({
           detailPageUrl: url,
           thumbnailUrl: null, // Will be populated during getFullSizeImage
+          fullSizeUrl: url, // Set to detail page URL to ensure getFullSizeImage is called
           title: `Adobe Stock Image - ${query}`,
           source: this.name,
           provider: this.name
@@ -149,7 +152,6 @@ class AdobeStockProvider extends BaseProvider {
   /**
    * Retrieves the full-size image URL.
    * For API mode, this typically means returning a pre-fetched comp URL or similar.
-   * For scraping, it would involve navigating to a detail page.
    * 
    * @param {object} imageInfo - Object containing image details from fetchImageUrls.
    * @param {import('playwright').Page} [page] - Optional Playwright page instance for scraping.
@@ -158,8 +160,9 @@ class AdobeStockProvider extends BaseProvider {
   async getFullSizeImage(imageInfo, page) {
     this.emitLog('info', `Getting full-size image for item: ${imageInfo.title || 'Unknown title'}`);
 
-    if (this.apiKey && imageInfo.fullSizeUrl) {
-      // In API mode, fullSizeUrl (comp_url) was already fetched during fetchImageUrls
+    // If we already have a fullSizeUrl property that's a valid string URL (from API mode),
+    // return it directly without additional processing
+    if (this.apiKey && imageInfo.fullSizeUrl && typeof imageInfo.fullSizeUrl === 'string' && imageInfo.fullSizeUrl.trim() !== '') {
       this.emitLog('info', `API mode: Returning pre-fetched comp URL as fullSizeUrl: ${imageInfo.fullSizeUrl}`);
       return imageInfo.fullSizeUrl;
     } else if (!this.apiKey && imageInfo.detailPageUrl) {
@@ -184,19 +187,39 @@ class AdobeStockProvider extends BaseProvider {
         );
         
         // Get the full-size image URL from the detail page
-        const fullSizeUrlFromGeneric = await genericProvider.getFullSizeImage(page, imageInfo.detailPageUrl);
+        const result = await genericProvider.getFullSizeImage(page, imageInfo.detailPageUrl);
         
-        if (typeof fullSizeUrlFromGeneric === 'string' && fullSizeUrlFromGeneric.trim() !== '') {
-          this.emitLog('info', `Successfully extracted full-size image URL: ${fullSizeUrlFromGeneric}`);
-          return fullSizeUrlFromGeneric;
-        } else {
-          if (fullSizeUrlFromGeneric !== null) { // Log if it's not null but also not a valid string
-            this.emitLog('warn', `GenericProvider returned non-string or empty string for full-size URL. Type: ${typeof fullSizeUrlFromGeneric}, Value: '${String(fullSizeUrlFromGeneric)}'. Detail page: ${imageInfo.detailPageUrl}`);
-          } else {
-            this.emitLog('warn', `Failed to extract full-size image URL (GenericProvider returned null) from detail page: ${imageInfo.detailPageUrl}`);
+        // Process the result carefully - it could be an object, string, or null
+        let fullSizeUrl = null;
+        
+        if (typeof result === 'string' && result.trim() !== '') {
+          // If result is a valid string URL, use it directly
+          fullSizeUrl = result;
+          this.emitLog('info', `Successfully extracted full-size image URL string: ${fullSizeUrl}`);
+        } else if (result !== null && typeof result === 'object') {
+          // If result is an object, try to extract URL from known properties
+          this.emitLog('debug', `GenericProvider returned an object. Properties: ${Object.keys(result).join(', ')}`);
+          
+          // First check for src property (most common for image elements)
+          if (result.src && typeof result.src === 'string' && result.src.trim() !== '') {
+            fullSizeUrl = result.src;
+            this.emitLog('info', `Extracted URL from object.src property: ${fullSizeUrl}`);
+          } 
+          // Also check for href property
+          else if (result.href && typeof result.href === 'string' && result.href.trim() !== '') {
+            fullSizeUrl = result.href;
+            this.emitLog('info', `Extracted URL from object.href property: ${fullSizeUrl}`);
           }
-          return null;
+          // If no valid URL property found in the object
+          else {
+            this.emitLog('warn', `Object returned from GenericProvider doesn't contain valid URL properties. Object: ${JSON.stringify(result)}`);
+          }
+        } else {
+          // Handle null or other invalid return types
+          this.emitLog('warn', `Failed to extract full-size image URL from detail page: ${imageInfo.detailPageUrl}. Result was: ${result}`);
         }
+        
+        return fullSizeUrl; // Will be string URL or null
       } catch (error) {
         this.emitLog('error', `Error getting full-size image in scraping mode: ${error.message}`);
         return null;

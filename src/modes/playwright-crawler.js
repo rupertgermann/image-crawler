@@ -218,13 +218,47 @@ class PlaywrightCrawler extends EventEmitter {
     return summary; // Return summary
   }
 
-  async processImage(imageUrl, source, providerInstance) {
+  async processImage(imageInfo, source, providerInstance) {
+    // Handle both string URLs and image info objects
+    let imageUrl;
+    let imageTitle;
+    
+    if (typeof imageInfo === 'string') {
+      // If imageInfo is already a string URL, use it directly
+      imageUrl = imageInfo;
+      imageTitle = `Image from ${source}`;
+    } else if (imageInfo && typeof imageInfo === 'object') {
+      // If imageInfo is an object (from providers like AdobeStock), extract URL and metadata
+      // First check for fullSizeUrl (highest priority)
+      if (imageInfo.fullSizeUrl && typeof imageInfo.fullSizeUrl === 'string' && validators.validateUrl(imageInfo.fullSizeUrl).valid) {
+        imageUrl = imageInfo.fullSizeUrl;
+      }
+      // Then check for thumbnailUrl
+      else if (imageInfo.thumbnailUrl && typeof imageInfo.thumbnailUrl === 'string' && validators.validateUrl(imageInfo.thumbnailUrl).valid) {
+        imageUrl = imageInfo.thumbnailUrl;
+      }
+      // Finally fallback to detailPageUrl for providers that need further processing
+      else if (imageInfo.detailPageUrl && typeof imageInfo.detailPageUrl === 'string' && validators.validateUrl(imageInfo.detailPageUrl).valid) {
+        imageUrl = imageInfo.detailPageUrl;
+      }
+      
+      // Extract title if available
+      imageTitle = imageInfo.title || `Image from ${source}`;
+    } else {
+      // Neither string nor valid object
+      this.emit('log', 'warn', `Skipping invalid image info from ${source}: ${typeof imageInfo === 'object' ? JSON.stringify(imageInfo) : imageInfo}`);
+      this.skippedCount++;
+      return false;
+    }
+    
     this.emit('log', 'debug', `Processing image URL: ${imageUrl} from provider ${source}`);
+    
     if (this.stopRequested) {
       this.emit('log', 'debug', `Skipping processing of image ${imageUrl} due to stop request.`);
       return false;
     }
-    if (!validators.validateUrl(imageUrl).valid) {
+    
+    if (!imageUrl || !validators.validateUrl(imageUrl).valid) {
       this.emit('log', 'warn', `Skipping invalid URL from ${source}: ${imageUrl}`);
       this.skippedCount++;
       return false;
@@ -234,7 +268,11 @@ class PlaywrightCrawler extends EventEmitter {
     try {
       if (typeof providerInstance.getFullSizeImage === 'function') {
         this.emit('log', 'debug', `Attempting to get full-size image for ${imageUrl} from ${source}`);
-        const fullSizeUrl = await providerInstance.getFullSizeImage(this.page, imageUrl);
+        // Pass the original imageInfo object if it's an object, otherwise pass the URL string
+        const fullSizeUrl = await providerInstance.getFullSizeImage(
+          typeof imageInfo === 'object' ? imageInfo : imageUrl, 
+          this.page
+        );
         if (fullSizeUrl && validators.validateUrl(fullSizeUrl).valid) {
           finalImageUrl = fullSizeUrl;
           this.emit('log', 'debug', `Got full-size URL: ${finalImageUrl}`);

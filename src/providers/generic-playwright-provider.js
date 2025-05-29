@@ -551,9 +551,26 @@ export default class GenericPlaywrightProvider extends BaseProvider {
 
     if (FULL_SIZE_ACTIONS[actionType]) {
       try {
+        this.emitLog('debug', `DEBUG: Calling ${actionType} handler with parameters: page, imageUrlOrContext: ${imageUrlOrContext}`);
         const fullUrl = await FULL_SIZE_ACTIONS[actionType](page, imageUrlOrContext, actionConfig, this);
-        this.emitLog('info', `Provider ${this.name}: Full-size action '${actionType}' resulted in URL: ${fullUrl}`);
-        return fullUrl;
+        this.emitLog('debug', `DEBUG: Return value from ${actionType} handler: type=${typeof fullUrl}, value=${JSON.stringify(fullUrl)}`);
+        
+        // Ensure we're always returning a string URL or null
+        if (typeof fullUrl === 'string' && fullUrl.trim() !== '') {
+          this.emitLog('info', `Provider ${this.name}: Full-size action '${actionType}' resulted in URL: ${fullUrl}`);
+          return fullUrl;
+        } else if (typeof fullUrl === 'object' && fullUrl !== null) {
+          this.emitLog('warn', `Provider ${this.name}: Handler returned an object instead of string URL. Object keys: ${Object.keys(fullUrl).join(', ')}`);
+          // If the object has a src property, use it
+          if (fullUrl.src) {
+            this.emitLog('debug', `DEBUG: Using src property from returned object: ${fullUrl.src}`);
+            return fullUrl.src;
+          }
+          return null;
+        } else {
+          this.emitLog('warn', `Provider ${this.name}: Handler returned invalid value: ${fullUrl}`);
+          return null;
+        }
       } catch (e) {
         this.emitLog('error', `Provider ${this.name}: Error during full-size action '${actionType}' for ${imageUrlOrContext}: ${e.message} - Stack: ${e.stack}`);
         return typeof imageUrlOrContext === 'string' ? imageUrlOrContext : null; 
