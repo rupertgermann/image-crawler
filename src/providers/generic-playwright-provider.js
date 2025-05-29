@@ -113,16 +113,32 @@ async function detail_page(page, detailPageUrl, actionConfig, providerInstance) 
         }
     }
     
-    if (fullImageUrl && providerConfig.baseUrl && !(fullImageUrl.startsWith('http:') || fullImageUrl.startsWith('https:'))) {
-        fullImageUrl = new URL(fullImageUrl, providerConfig.baseUrl).toString();
-        providerInstance.emitLog('debug', `Resolved full image URL with base URL: ${fullImageUrl}`);
+    // Handle relative URLs by converting them to absolute
+    if (fullImageUrl && !(fullImageUrl.startsWith('http:') || fullImageUrl.startsWith('https:'))) {
+        // Use baseUrl from actionConfig if available, otherwise from providerInstance.providerConfig
+        const baseUrl = (actionConfig && actionConfig.baseUrl) || 
+                       (providerInstance && providerInstance.providerConfig && providerInstance.providerConfig.imageExtraction && 
+                        providerInstance.providerConfig.imageExtraction.baseUrl) || 
+                       detailPageUrl;
+        
+        try {
+            fullImageUrl = new URL(fullImageUrl, baseUrl).toString();
+            providerInstance.emitLog('debug', `Resolved relative URL to absolute: ${fullImageUrl}`);
+        } catch (e) {
+            providerInstance.emitLog('warn', `Failed to resolve relative URL: ${fullImageUrl} with base ${baseUrl}: ${e.message}`);
+        }
     }
 
-    providerInstance.emitLog('info', `Detail page extracted full image URL: ${fullImageUrl}`);
-    return fullImageUrl || detailPageUrl; // Fallback to detailPageUrl if extraction failed
+    if (fullImageUrl) {
+      providerInstance.emitLog('info', `Detail page extracted full image URL: ${fullImageUrl}`);
+      return fullImageUrl; // Return the extracted image URL - this is key
+    } else {
+      providerInstance.emitLog('warn', `No image URL found on detail page, not using fallback`);
+      return null; // Return null instead of falling back to the detail page URL
+    }
   } catch (e) {
     providerInstance.emitLog('warn', `Failed to get image from detail page ${detailPageUrl}: ${e.message}`);
-    return detailPageUrl; // Fallback
+    return null; // Return null instead of falling back to the detail page URL
   }
 }
 

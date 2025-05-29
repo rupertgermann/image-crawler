@@ -20,12 +20,14 @@ export default {
   },
   fullSizeActions: {
     type: 'detail_page',
+    // Important: We want to extract the src attribute from the image with data-t="details-thumbnail-image"
     selectors: ['img[data-t="details-thumbnail-image"]'], // Target the high-resolution preview image
-    attribute: 'src',
+    attribute: 'src', // Extract the src attribute which contains the actual image URL
     waitStrategy: 'locator', // Wait for the selector to be visible
     waitDelay: 2000, // Wait 2 seconds after navigation before extracting
     timeout: 15000, // Timeout for waiting on the image
-    navigationWaitUntil: 'domcontentloaded', // Wait until DOM is loaded
+    // Ensure we fully load the page before extracting the image URL
+    navigationWaitUntil: 'networkidle', // Wait until network is idle to ensure image is loaded
   },
   playwrightOptions: {
     useLocators: true,

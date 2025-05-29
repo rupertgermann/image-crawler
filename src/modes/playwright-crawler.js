@@ -318,15 +318,84 @@ class PlaywrightCrawler extends EventEmitter {
         }
       }
 
-      this.emit('log', 'debug', `Attempting to navigate to image URL: ${finalImageUrl}`);
-      const response = await this.page.goto(finalImageUrl, { waitUntil: 'commit', timeout: this.options.timeout || 60000 });
-      if (!response || !response.ok()) {
-        this.emit('log', 'warn', `Failed to fetch image ${finalImageUrl} from ${source}. Status: ${response ? response.status() : 'unknown'}`);
+      // Different handling for direct image URLs vs URLs that need processing
+      let buffer;
+      let contentType;
+      
+      this.emit('log', 'debug', `Attempting to fetch image: ${finalImageUrl}`);
+      
+      // Check if URL appears to be a direct image link based on extension or path patterns
+      const isLikelyImageUrl = /\.(jpe?g|png|gif|webp)([?#].*)?$/i.test(finalImageUrl);
+      
+      if (isLikelyImageUrl) {
+        // For direct image URLs, use page.goto to navigate and get the response body
+        this.emit('log', 'debug', `URL appears to be direct image URL: ${finalImageUrl}`);
+        const response = await this.page.goto(finalImageUrl, { waitUntil: 'commit', timeout: this.options.timeout || 60000 });
+        if (!response || !response.ok()) {
+          this.emit('log', 'warn', `Failed to fetch image ${finalImageUrl} from ${source}. Status: ${response ? response.status() : 'unknown'}`);
+          this.skippedCount++;
+          return false;
+        }
+        
+        contentType = response.headers()['content-type'] || '';
+        if (!contentType.startsWith('image/')) {
+          this.emit('log', 'warn', `URL ${finalImageUrl} does not return image content (got ${contentType}). Trying fetch API as fallback...`);
+        } else {
+          this.emit('log', 'debug', `Successfully navigated to ${finalImageUrl}. Content-Type: ${contentType}. Status: ${response.status()}`);
+          buffer = await response.body();
+        }
+      }
+      
+      // If no buffer yet (not a direct image URL or content-type wasn't image), try fetch API
+      if (!buffer) {
+        try {
+          this.emit('log', 'debug', `Using fetch API to download image from: ${finalImageUrl}`);
+          // Using page.evaluate to use the browser's fetch API
+          const fetchResult = await this.page.evaluate(async (url) => {
+            try {
+              const response = await fetch(url, { credentials: 'include' });
+              if (!response.ok) return { error: `HTTP error: ${response.status}` };
+              
+              const contentType = response.headers.get('content-type') || '';
+              if (!contentType.startsWith('image/')) {
+                return { error: `Not an image content-type: ${contentType}` };
+              }
+              
+              // Convert the response to Base64
+              const blob = await response.blob();
+              return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve({ data: reader.result, type: contentType });
+                reader.readAsDataURL(blob);
+              });
+            } catch (err) {
+              return { error: err.toString() };
+            }
+          }, finalImageUrl);
+          
+          if (fetchResult.error) {
+            this.emit('log', 'warn', `Failed to fetch image using browser API: ${fetchResult.error}`);
+            this.skippedCount++;
+            return false;
+          }
+          
+          const base64Data = fetchResult.data.split(',')[1]; // Remove the data URL prefix
+          buffer = Buffer.from(base64Data, 'base64');
+          contentType = fetchResult.type;
+          this.emit('log', 'debug', `Successfully fetched image data via fetch API. Content-Type: ${contentType}`);
+        } catch (fetchError) {
+          this.emit('log', 'error', `Error fetching image via browser fetch API: ${fetchError.message}`);
+          this.skippedCount++;
+          return false;
+        }
+      }
+      
+      // Final validation that we have image data
+      if (!buffer || buffer.length === 0) {
+        this.emit('log', 'warn', `Failed to get image data from ${finalImageUrl}`);
         this.skippedCount++;
         return false;
       }
-      this.emit('log', 'debug', `Successfully navigated to ${finalImageUrl}. Status: ${response.status()}`);
-      const buffer = await response.body();
 
       if (this.options.minFileSize && buffer.length < this.options.minFileSize) {
         this.emit('log', 'info', `Image ${finalImageName} from ${source} is too small (${buffer.length} bytes vs min ${this.options.minFileSize} bytes). Skipping.`);
