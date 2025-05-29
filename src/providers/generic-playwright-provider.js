@@ -70,7 +70,7 @@ async function lightbox(page, itemUrlOrContext, actionConfig, providerInstance) 
 // Handler for detail page full-size image extraction
 async function detail_page(page, detailPageUrl, actionConfig, providerInstance) {
   providerInstance.emitLog('debug', `Full size action 'detail_page' for ${detailPageUrl}`);
-  const { selectors, waitStrategy, waitDelay = 1500 } = actionConfig;
+  const { selectors, attribute = 'src', waitStrategy, waitDelay = 1500 } = actionConfig; // Added attribute
 
   if (!selectors || !selectors.length) {
     providerInstance.emitLog('error', 'Detail page action config missing selectors.');
@@ -78,37 +78,63 @@ async function detail_page(page, detailPageUrl, actionConfig, providerInstance) 
   }
 
   try {
+    providerInstance.emitLog('debug', `Navigating to detail page: ${detailPageUrl}`);
     await page.goto(detailPageUrl, { waitUntil: actionConfig.navigationWaitUntil || 'networkidle', timeout: actionConfig.navigationTimeout || 30000 });
     providerInstance.emitLog('info', `Navigated to detail page: ${detailPageUrl}`);
     
     const imageLocator = page.locator(selectors.join(', ')).first();
+    providerInstance.emitLog('debug', `Waiting for selector '${selectors.join(', ')}' on detail page.`);
     if (waitStrategy === 'locator') {
       await imageLocator.waitFor({ state: 'visible', timeout: actionConfig.timeout || 7000 });
     } else {
       await page.waitForTimeout(waitDelay);
     }
+    providerInstance.emitLog('debug', `Selector '${selectors.join(', ')}' is visible.`);
     
-    let fullImageUrl = await imageLocator.getAttribute('src');
-    if (!fullImageUrl) fullImageUrl = await imageLocator.evaluate(node => node.currentSrc || node.src);
+    let fullImageUrl = null;
+    if (attribute.toLowerCase() === 'href') {
+        fullImageUrl = await imageLocator.getAttribute('href');
+        providerInstance.emitLog('debug', `Extracted href attribute: ${fullImageUrl}`);
+    } else {
+        fullImageUrl = await imageLocator.getAttribute('src');
+        if (!fullImageUrl) fullImageUrl = await imageLocator.evaluate(node => node.currentSrc || node.src);
+        providerInstance.emitLog('debug', `Extracted src/currentSrc attribute: ${fullImageUrl}`);
+        
+        // Handle srcset if present and src was not found directly
+        if (!fullImageUrl) {
+          const srcset = await imageLocator.getAttribute('srcset');
+          if (srcset) {
+            providerInstance.emitLog('debug', `Found srcset: ${srcset}`);
+            // Basic parsing: take the last URL, often highest resolution
+            const sources = srcset.split(',').map(s => s.trim().split(' ')[0]);
+            fullImageUrl = sources.pop(); 
+            providerInstance.emitLog('debug', `Extracted from srcset: ${fullImageUrl}`);
+          }
+        }
+    }
     
-    // Handle srcset if present
-    if (!fullImageUrl) {
-      const srcset = await imageLocator.getAttribute('srcset');
-      if (srcset) {
-        providerInstance.emitLog('debug', `Found srcset: ${srcset}`);
-        // Basic parsing: take the last URL, often highest resolution
-        const sources = srcset.split(',').map(s => s.trim().split(' ')[0]);
-        fullImageUrl = sources.pop(); 
-      }
+    if (fullImageUrl && providerConfig.baseUrl && !(fullImageUrl.startsWith('http:') || fullImageUrl.startsWith('https:'))) {
+        fullImageUrl = new URL(fullImageUrl, providerConfig.baseUrl).toString();
+        providerInstance.emitLog('debug', `Resolved full image URL with base URL: ${fullImageUrl}`);
     }
 
-    providerInstance.emitLog('debug', `Detail page extracted full image: ${fullImageUrl}`);
-    return fullImageUrl || detailPageUrl;
+    providerInstance.emitLog('info', `Detail page extracted full image URL: ${fullImageUrl}`);
+    return fullImageUrl || detailPageUrl; // Fallback to detailPageUrl if extraction failed
   } catch (e) {
     providerInstance.emitLog('warn', `Failed to get image from detail page ${detailPageUrl}: ${e.message}`);
     return detailPageUrl; // Fallback
   }
 }
+
+
+// Helper to access providerConfig within static/external functions if needed
+let providerConfigGetter = () => null;
+function setProviderConfigGetter(getter) {
+    providerConfigGetter = getter;
+}
+function getProviderConfig() {
+    return providerConfigGetter();
+  }
 
 // Handler for URL cleaning (remove parameters)
 async function url_cleaning(page, imageUrl, actionConfig, providerInstance) {
@@ -156,55 +182,61 @@ export default class GenericPlaywrightProvider extends BaseProvider {
     this.providerConfig = providerConfig;
     this.name = providerConfig.name;
     this.playwrightOptions = providerConfig.playwrightOptions || {};
+    setProviderConfigGetter(() => this.providerConfig); // Make providerConfig accessible to helper
     this.emitLog('info', `GenericPlaywrightProvider initialized for ${this.name}`);
   }
 
   async _handleConsent(page) {
+    this.emitLog('debug', `_handleConsent called for ${this.name}`);
     const consentSelectors = this.providerConfig.selectors?.consentButtons || [];
     if (consentSelectors.length === 0) {
       this.emitLog('debug', 'No consent selectors configured.');
       return;
     }
-    this.emitLog('info', 'Checking for consent buttons...');
+    this.emitLog('info', `Checking for consent buttons using selectors: ${consentSelectors.join(', ')}`);
     for (const selector of consentSelectors) {
       try {
-        const buttonLocator = page.locator(selector).first(); // Use first() to avoid ambiguity if multiple match
-        if (await buttonLocator.isVisible({ timeout: this.playwrightOptions.waitOptions?.timeout || 3000 })) {
-          this.emitLog('info', `Consent button found with selector: "${selector}". Clicking...`);
+        const buttonLocator = page.locator(selector).first(); 
+        const isVisible = await buttonLocator.isVisible({ timeout: this.playwrightOptions.waitOptions?.timeout || 3000 });
+        this.emitLog('debug', `Selector "${selector}" visibility: ${isVisible}`);
+        if (isVisible) {
+          this.emitLog('info', `Consent button found with selector: "${selector}". Attempting to click...`);
           await buttonLocator.click({ timeout: 5000 });
-          this.emitLog('info', 'Consent button clicked.');
-          await page.waitForTimeout(1000); // Wait a bit for action to complete
-          return; // Assume one consent dialog is enough
+          this.emitLog('info', `Consent button for selector "${selector}" clicked successfully.`);
+          await page.waitForTimeout(1000); 
+          return; 
         }
       } catch (error) {
-        this.emitLog('debug', `Consent button with selector "${selector}" not found or not visible: ${error.message}`);
+        this.emitLog('debug', `Consent button with selector "${selector}" not found, not visible, or error clicking: ${error.message}`);
       }
     }
     this.emitLog('info', 'No visible consent buttons found or all handled.');
   }
 
   async _performScrolling(page, maxResults) {
+    this.emitLog('debug', `_performScrolling called for ${this.name}`);
     const scrollConfig = this.providerConfig.scrolling;
     if (!scrollConfig) {
-      this.emitLog('info', 'No scrolling configuration found.');
+      this.emitLog('info', 'No scrolling configuration found for this provider.');
       return;
     }
 
-    this.emitLog('info', `Starting scroll process with strategy: ${scrollConfig.strategy || 'auto'}`);
-    let collectedImageUrls = new Set();
+    this.emitLog('info', `Starting scroll process with strategy: ${scrollConfig.strategy || 'auto'}, maxScrolls: ${scrollConfig.maxScrolls}, scrollDelay: ${scrollConfig.scrollDelay}`);
+    let collectedImageUrls = new Set(await this._extractImageUrlsFromPage(page));
+    this.emitLog('debug', `Initial image count before scrolling: ${collectedImageUrls.size}`);
     let noNewImagesCount = 0;
-    const initialImageCount = (await this._extractImageUrlsFromPage(page)).length;
-    collectedImageUrls = new Set(await this._extractImageUrlsFromPage(page));
 
-    for (let i = 0; i < (scrollConfig.maxScrolls || 10); i++) {
+    for (let i = 0; i < (scrollConfig.maxScrolls || 0); i++) { // Ensure maxScrolls defaults to 0 if undefined
+      this.emitLog('debug', `Scroll attempt ${i + 1} of ${scrollConfig.maxScrolls || 0}`);
       if (collectedImageUrls.size >= maxResults) {
-        this.emitLog('info', `Reached maxResults (${maxResults}) during scrolling.`);
+        this.emitLog('info', `Reached maxResults (${maxResults}) during scrolling. Stopping scroll.`);
         break;
       }
 
       const previousImageCount = collectedImageUrls.size;
       
       if (scrollConfig.strategy === 'manual' && scrollConfig.selectors?.showMoreButton) {
+        this.emitLog('debug', `Manual scroll: looking for 'show more' button with selector: ${scrollConfig.selectors.showMoreButton}`);
         try {
           const showMoreButton = page.locator(scrollConfig.selectors.showMoreButton).first();
           if (await showMoreButton.isVisible({ timeout: 3000 })) {
@@ -219,17 +251,18 @@ export default class GenericPlaywrightProvider extends BaseProvider {
           this.emitLog('warn', `'Show more' button error: ${e.message}. Ending scroll.`);
           break;
         }
-      } else if (scrollConfig.strategy === 'infinite_scroll' || scrollConfig.useAutoScroll) {
-        this.emitLog('info', `Performing scroll action (scroll ${i + 1}/${scrollConfig.maxScrolls})`);
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight * 2)); // Scroll two viewports
-        await page.waitForTimeout(scrollConfig.scrollDelay || 2000); // Wait for content to load
+      } else if (scrollConfig.strategy === 'infinite_scroll' && scrollConfig.useAutoScroll !== false) { // Default useAutoScroll to true for infinite_scroll
+        this.emitLog('info', `Performing infinite_scroll action (scroll ${i + 1}/${scrollConfig.maxScrolls})`);
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight * (scrollConfig.scrollPages || 2)));
+        await page.waitForTimeout(scrollConfig.scrollDelay || 2000); 
       } else {
-        this.emitLog('info', 'Scrolling strategy not applicable or auto-scroll handled by Playwright actions.');
-        break; // No specific scroll action, or rely on Playwright's default for other actions
+        this.emitLog('info', `Scrolling strategy '${scrollConfig.strategy}' not applicable or useAutoScroll is false. MaxScrolls set to ${scrollConfig.maxScrolls}. Ending scroll early if maxScrolls is 0.`);
+        break; 
       }
 
       const currentImages = await this._extractImageUrlsFromPage(page);
       currentImages.forEach(url => collectedImageUrls.add(url));
+      this.emitLog('debug', `Image count after scroll ${i + 1}: ${collectedImageUrls.size} (was ${previousImageCount})`);
 
       if (collectedImageUrls.size === previousImageCount) {
         noNewImagesCount++;
@@ -239,17 +272,18 @@ export default class GenericPlaywrightProvider extends BaseProvider {
           break;
         }
       } else {
-        noNewImagesCount = 0; // Reset counter if new images are found
+        noNewImagesCount = 0; 
       }
       this.emitProgress({ current: collectedImageUrls.size, total: maxResults, status: 'scrolling' });
     }
-    this.emitLog('info', `Scrolling finished. Found ${collectedImageUrls.size} potential image URLs.`);
+    this.emitLog('info', `Scrolling finished. Total potential image URLs after scrolling: ${collectedImageUrls.size}.`);
   }
 
   async _extractImageUrlsFromPage(page) {
+    this.emitLog('debug', `_extractImageUrlsFromPage called for ${this.name}`);
     const extractionConfig = this.providerConfig.imageExtraction;
     if (!extractionConfig) {
-      this.emitLog('error', 'Image extraction configuration is missing.');
+      this.emitLog('error', 'Image extraction configuration is missing for this provider.');
       return [];
     }
 
@@ -260,6 +294,7 @@ export default class GenericPlaywrightProvider extends BaseProvider {
       this.emitLog('error', 'No primary selector (images, thumbnails, imageLinks) found in provider config.');
       return [];
     }
+    this.emitLog('debug', `Using main selector for image extraction: ${mainSelector}`);
 
     const elements = await page.locator(mainSelector).elementHandles();
     this.emitLog('debug', `Found ${elements.length} elements matching selector: ${mainSelector}`);
@@ -268,45 +303,47 @@ export default class GenericPlaywrightProvider extends BaseProvider {
       let url = null;
       switch (extractionConfig.type) {
         case 'attribute':
+          this.emitLog('debug', `Extraction type 'attribute', checking attributes: ${extractionConfig.attributes?.join(', ')}`);
           for (const attr of extractionConfig.attributes || ['src']) {
             const value = await element.getAttribute(attr);
             if (value && value.trim() !== '') {
               if (attr.toLowerCase() === 'srcset') {
-                // Parse srcset: take the last URL, often highest resolution
-                // Format: "url1 w1, url2 w2, ..." or just "url1, url2"
                 const sources = value.split(',').map(s => s.trim().split(' ')[0]);
                 if (sources.length > 0) {
-                  url = sources.pop(); // Get the last URL
-                  this.emitLog('debug', `Extracted from srcset: ${url} (from ${value})`);
+                  url = sources.pop(); 
+                  this.emitLog('debug', `Extracted from srcset: ${url} (from ${value}) for element matching ${mainSelector}`);
                 } else {
-                  this.emitLog('debug', `Srcset found but no sources could be parsed: ${value}`);
+                  this.emitLog('debug', `Srcset found for ${mainSelector} but no sources could be parsed: ${value}`);
                 }
               } else if (!value.startsWith('data:')) {
                 url = value;
+                this.emitLog('debug', `Extracted attribute '${attr}': ${url} for element matching ${mainSelector}`);
               }
-              if (url) break; // Found a URL from one of the attributes
+              if (url) break; 
             }
           }
           break;
         case 'json_attribute':
+          this.emitLog('debug', `Extraction type 'json_attribute', attribute: ${extractionConfig.attribute}, path: ${extractionConfig.jsonPath}`);
           const jsonAttrValue = await element.getAttribute(extractionConfig.attribute);
           if (jsonAttrValue) {
             try {
               const jsonData = JSON.parse(jsonAttrValue);
-              // Basic path navigation, e.g., 'murl' or 'obj.key.murl'
               url = extractionConfig.jsonPath.split('.').reduce((o, k) => (o || {})[k], jsonData);
+              this.emitLog('debug', `Extracted from JSON attribute: ${url}`);
             } catch (e) {
-              this.emitLog('debug', `Failed to parse JSON attribute or find path ${extractionConfig.jsonPath}: ${e.message}`);
+              this.emitLog('debug', `Failed to parse JSON attribute or find path ${extractionConfig.jsonPath} for ${mainSelector}: ${e.message}`);
             }
           }
           if (!url && extractionConfig.fallback) {
-            // Simplified fallback: assumes nested_attribute
+            this.emitLog('debug', `Attempting fallback for JSON attribute for ${mainSelector}`);
             const imgElement = await element.$(extractionConfig.fallback.selector || 'img');
             if (imgElement) {
               for (const attr of extractionConfig.fallback.attributes || ['src']) {
                 const fallbackValue = await imgElement.getAttribute(attr);
                 if (fallbackValue && fallbackValue.trim() !== '' && !fallbackValue.startsWith('data:')) {
                   url = fallbackValue;
+                  this.emitLog('debug', `Extracted from fallback attribute '${attr}': ${url}`);
                   break;
                 }
               }
@@ -314,75 +351,84 @@ export default class GenericPlaywrightProvider extends BaseProvider {
           }
           break;
         case 'nested_attribute':
+          this.emitLog('debug', `Extraction type 'nested_attribute', selector: ${extractionConfig.selector}, attributes: ${extractionConfig.attributes?.join(', ')}`);
           const nestedElement = await element.$(extractionConfig.selector || 'img');
           if (nestedElement) {
             for (const attr of extractionConfig.attributes || ['src']) {
               const value = await nestedElement.getAttribute(attr);
               if (value && value.trim() !== '' && !value.startsWith('data:')) {
                 url = value;
+                this.emitLog('debug', `Extracted from nested attribute '${attr}': ${url}`);
                 break;
               }
             }
           }
           break;
         case 'link_collection':
+          this.emitLog('debug', `Extraction type 'link_collection', checking href`);
           url = await element.getAttribute('href');
           if (url) {
             let resolvedUrl;
             if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
-              resolvedUrl = new URL(url, page.url()).toString(); // Handles protocol-relative URLs too
+              resolvedUrl = new URL(url, page.url()).toString();
             } else if (extractionConfig.baseUrl) {
               resolvedUrl = new URL(url, extractionConfig.baseUrl).toString();
             } else {
-              resolvedUrl = new URL(url, page.url()).toString(); // Fallback to page's base URL
+              resolvedUrl = new URL(url, page.url()).toString();
             }
+            this.emitLog('debug', `Collected link: ${resolvedUrl}`);
             urls.add(resolvedUrl);
+          } else {
+            this.emitLog('debug', `No href found for element matching ${mainSelector} in link_collection mode.`);
           }
           break;
         default:
-          this.emitLog('warn', `Unknown image extraction type: ${extractionConfig.type}`);
+          this.emitLog('warn', `Unknown image extraction type: ${extractionConfig.type} for ${mainSelector}`);
       }
 
-      if (extractionConfig.type !== 'link_collection') {
-        if (url) {
-          try {
-            const absoluteUrl = new URL(url, page.url()).toString();
-            // Apply filters
-            let passesFilter = true;
-            if (extractionConfig.filters && extractionConfig.filters.length > 0) {
-              for (const filter of extractionConfig.filters) {
-                if (filter.startsWith('!')) {
-                  if (absoluteUrl.includes(filter.substring(1))) {
-                    passesFilter = false; break;
-                  }
-                } else if (filter.startsWith('^')) {
-                  if (!absoluteUrl.startsWith(filter.substring(1))) {
-                    passesFilter = false; break;
-                  }
-                } else {
-                  if (!absoluteUrl.includes(filter)) {
-                    passesFilter = false; break;
-                  }
-                }
-              }
-            }
-            if (passesFilter) {
-              if (absoluteUrl && absoluteUrl.trim() !== '') {
-                  urls.add(absoluteUrl);
-              }
-            }
-          } catch (e) {
-            this.emitLog('debug', `Invalid or relative URL encountered: ${url}. Error: ${e.message}`);
+      if (extractionConfig.type !== 'link_collection' && url) {
+        try {
+          let absoluteUrl = url;
+          if (!(url.startsWith('http:') || url.startsWith('https:'))) {
+            absoluteUrl = new URL(url, extractionConfig.baseUrl || page.url()).toString();
+            this.emitLog('debug', `Resolved relative URL ${url} to ${absoluteUrl} using base: ${extractionConfig.baseUrl || page.url()}`);
           }
+          
+          let passesFilter = true;
+          if (extractionConfig.filters && extractionConfig.filters.length > 0) {
+            this.emitLog('debug', `Applying filters to ${absoluteUrl}: ${extractionConfig.filters.join(', ')}`);
+            for (const filter of extractionConfig.filters) {
+              if (filter.startsWith('!')) { // Not contains
+                if (absoluteUrl.includes(filter.substring(1))) { passesFilter = false; break; }
+              } else if (filter.startsWith('^')) { // Starts with
+                if (!absoluteUrl.startsWith(filter.substring(1))) { passesFilter = false; break; }
+              } else { // Contains
+                if (!absoluteUrl.includes(filter)) { passesFilter = false; break; }
+              }
+            }
+            this.emitLog('debug', `Filter result for ${absoluteUrl}: ${passesFilter}`);
+          }
+          if (passesFilter && absoluteUrl.trim() !== '') {
+              urls.add(absoluteUrl);
+              this.emitLog('debug', `Added URL after filters: ${absoluteUrl}`);
+          }
+        } catch (e) {
+          this.emitLog('warn', `Invalid or relative URL encountered: ${url} for ${mainSelector}. Error: ${e.message}`);
         }
+      } else if (extractionConfig.type !== 'link_collection' && !url) {
+          this.emitLog('debug', `No URL extracted for an element matching ${mainSelector} with type ${extractionConfig.type}`);
       }
     }
-    return Array.from(urls);
+    const finalUrls = Array.from(urls);
+    this.emitLog('debug', `_extractImageUrlsFromPage returning ${finalUrls.length} URLs: ${finalUrls.join(', ')}`);
+    return finalUrls;
   }
 
   async _constructSearchUrl(query, options) {
+    this.emitLog('debug', `_constructSearchUrl called with query: "${query}", options: ${JSON.stringify(options)}`);
     let transformedQuery = query;
     if (this.providerConfig.queryTransformations && Array.isArray(this.providerConfig.queryTransformations)) {
+      this.emitLog('debug', `Applying query transformations: ${this.providerConfig.queryTransformations.join(', ')}`);
       this.providerConfig.queryTransformations.forEach(transformation => {
         switch (transformation) {
           case 'toLowerCase':
@@ -391,110 +437,130 @@ export default class GenericPlaywrightProvider extends BaseProvider {
           case 'spacesToHyphens':
             transformedQuery = transformedQuery.replace(/\s+/g, '-');
             break;
-          // Add other transformations as needed
           default:
             this.emitLog('warn', `Unknown query transformation: ${transformation}`);
         }
       });
+      this.emitLog('debug', `Transformed query: "${transformedQuery}"`);
     }
 
     let url = this.providerConfig.searchUrl.replace('{query}', encodeURIComponent(transformedQuery));
+    this.emitLog('debug', `Initial search URL with query: ${url}`);
 
-    // Handle dynamic search parameters from config (e.g., safeSearch for DuckDuckGo)
     if (this.providerConfig.searchParamsConfig) {
+      this.emitLog('debug', `Applying search params config: ${JSON.stringify(this.providerConfig.searchParamsConfig)}`);
       for (const optionKey in this.providerConfig.searchParamsConfig) {
-        if (options.hasOwnProperty(optionKey)) {
+        if (options.hasOwnProperty(optionKey) || this.providerConfig.searchParamsConfig[optionKey].defaultValue !== undefined) {
           const paramConfig = this.providerConfig.searchParamsConfig[optionKey];
-          const placeholder = `{${optionKey}Param}`; // e.g., {safeSearchParam}
-          const valueToUse = options[optionKey] ? paramConfig.onValue : paramConfig.offValue;
-          if (url.includes(placeholder)) {
-            url = url.replace(placeholder, encodeURIComponent(valueToUse));
+          const placeholder = `{${optionKey}Param}`; 
+          let valueToUse;
+          if (options.hasOwnProperty(optionKey)) {
+            valueToUse = options[optionKey] ? paramConfig.onValue : paramConfig.offValue;
           } else {
-            // If placeholder not in URL, try to append as query param (less ideal, assumes structure)
-            // This part might need more robust handling if URLs don't have placeholders
-            this.emitLog('debug', `Placeholder ${placeholder} not in searchUrl, attempting to append ${paramConfig.paramName}=${valueToUse}`);
-            const separator = url.includes('?') ? '&' : '?';
-            url += `${separator}${encodeURIComponent(paramConfig.paramName)}=${encodeURIComponent(valueToUse)}`;
+            valueToUse = paramConfig.defaultValue; // Use default if option not provided
+          }
+          
+          if (valueToUse !== undefined) { // Only add if value is defined
+            if (url.includes(placeholder)) {
+              url = url.replace(placeholder, encodeURIComponent(valueToUse));
+              this.emitLog('debug', `Replaced placeholder ${placeholder} with ${valueToUse}. URL is now: ${url}`);
+            } else if (paramConfig.paramName) { // Only append if paramName is defined
+              const separator = url.includes('?') ? '&' : '?';
+              url += `${separator}${encodeURIComponent(paramConfig.paramName)}=${encodeURIComponent(valueToUse)}`;
+              this.emitLog('debug', `Appended param ${paramConfig.paramName}=${valueToUse}. URL is now: ${url}`);
+            }
           }
         }
       }
     }
-    // Fallback for older safeSearch handling if new config not present
     if (url.includes('{safeSearch}') && options.hasOwnProperty('safeSearch')){
-        url = url.replace('{safeSearch}', options.safeSearch ? (this.providerConfig.safeSearchOnValue || 'on') : (this.providerConfig.safeSearchOffValue || 'off'));
+        const safeSearchValue = options.safeSearch ? (this.providerConfig.safeSearchOnValue || 'on') : (this.providerConfig.safeSearchOffValue || 'off');
+        url = url.replace('{safeSearch}', safeSearchValue);
+        this.emitLog('debug', `Applied legacy safeSearch. URL is now: ${url}`);
     }
 
-    this.emitLog('debug', `Constructed search URL: ${url}`);
+    this.emitLog('info', `Constructed final search URL: ${url}`);
     return url;
   }
 
   async fetchImageUrls(query, options, page) {
-    this.emitLog('info', `Fetching images for query: "${query}" with options: ${JSON.stringify(options)}`);
+    this.emitLog('info', `Fetching images for query: "${query}" for provider ${this.name} with options: ${JSON.stringify(options)}`);
     if (!this.providerConfig || !this.providerConfig.searchUrl) {
-      this.emitLog('error', 'Provider configuration is missing or invalid (no searchUrl).');
+      this.emitLog('error', `Provider ${this.name}: Configuration is missing or invalid (no searchUrl).`);
       return [];
     }
 
     const searchUrl = await this._constructSearchUrl(query, options);
-    this.emitLog('info', `Navigating to search URL: ${searchUrl}`);
+    this.emitLog('info', `Provider ${this.name}: Navigating to search URL: ${searchUrl}`);
     
     try {
       await page.goto(searchUrl, { waitUntil: this.providerConfig.navigationWaitUntil || 'domcontentloaded', timeout: this.providerConfig.navigationTimeout || 30000 });
-      this.emitLog('info', 'Navigation complete.');
+      this.emitLog('info', `Provider ${this.name}: Navigation to ${searchUrl} complete.`);
     } catch (e) {
-      this.emitLog('error', `Failed to navigate to ${searchUrl}: ${e.message}`);
+      this.emitLog('error', `Provider ${this.name}: Failed to navigate to ${searchUrl}: ${e.message}`);
       return [];
     }
 
     await this._handleConsent(page);
     
-    // Initial image extraction before scrolling
+    this.emitLog('debug', `Provider ${this.name}: Extracting initial images before scrolling.`);
     let allImageUrls = new Set(await this._extractImageUrlsFromPage(page));
-    this.emitLog('info', `Found ${allImageUrls.size} images on initial load.`);
+    this.emitLog('info', `Provider ${this.name}: Found ${allImageUrls.size} images on initial load.`);
 
-    if (this.providerConfig.scrolling && allImageUrls.size < options.maxResults) {
+    if (this.providerConfig.scrolling && (this.providerConfig.scrolling.maxScrolls > 0 || this.providerConfig.scrolling.strategy === 'manual') && allImageUrls.size < options.maxResults) {
+      this.emitLog('info', `Provider ${this.name}: Scrolling needed. Initial: ${allImageUrls.size}, MaxResults: ${options.maxResults}`);
       await this._performScrolling(page, options.maxResults);
-      // Re-extract images after scrolling to get all loaded items
       allImageUrls = new Set(await this._extractImageUrlsFromPage(page)); 
+      this.emitLog('info', `Provider ${this.name}: Found ${allImageUrls.size} images after scrolling.`);
+    } else {
+      this.emitLog('info', `Provider ${this.name}: No scrolling needed or configured (maxScrolls: ${this.providerConfig.scrolling?.maxScrolls}, strategy: ${this.providerConfig.scrolling?.strategy}). Initial: ${allImageUrls.size}, MaxResults: ${options.maxResults}`);
     }
     
     let finalUrls = Array.from(allImageUrls);
 
-    // If extraction type is 'link_collection', these are detail page URLs.
-    // We don't fetch full images here, that's for getFullSizeImage.
-    // But we might want to limit the number of links collected based on maxResults.
     if (this.providerConfig.imageExtraction?.type === 'link_collection') {
-        this.emitLog('info', `Collected ${finalUrls.length} detail page links.`);
+        this.emitLog('info', `Provider ${this.name}: Collected ${finalUrls.length} detail page links.`);
     }
 
     if (finalUrls.length > options.maxResults) {
+      this.emitLog('debug', `Provider ${this.name}: Trimming ${finalUrls.length} URLs to maxResults: ${options.maxResults}`);
       finalUrls = finalUrls.slice(0, options.maxResults);
     }
     
-    this.emitLog('info', `Returning ${finalUrls.length} image URLs.`);
+    this.emitLog('info', `Provider ${this.name}: Returning ${finalUrls.length} image URLs.`);
+    this.emitLog('debug', `Provider ${this.name}: Final URLs: ${JSON.stringify(finalUrls)}`);
     return finalUrls;
   }
 
   async getFullSizeImage(page, imageUrlOrContext) {
-    this.emitLog('info', `Getting full-size image for: ${imageUrlOrContext}`);
+    this.emitLog('info', `Provider ${this.name}: Getting full-size image for: ${imageUrlOrContext}`);
     if (!this.providerConfig || !this.providerConfig.fullSizeActions) {
-      this.emitLog('error', 'Full-size actions configuration is missing.');
-      return imageUrlOrContext; // Fallback to original URL
+      this.emitLog('error', `Provider ${this.name}: Full-size actions configuration is missing.`);
+      return typeof imageUrlOrContext === 'string' ? imageUrlOrContext : null;
     }
 
     const actionConfig = this.providerConfig.fullSizeActions;
-    const actionType = actionConfig.type.toUpperCase(); // Convert to uppercase
+    const actionType = actionConfig.type?.toUpperCase(); 
+
+    if (!actionType) {
+        this.emitLog('error', `Provider ${this.name}: Full-size action type is missing in configuration.`);
+        return typeof imageUrlOrContext === 'string' ? imageUrlOrContext : null;
+    }
+    
+    this.emitLog('debug', `Provider ${this.name}: Full-size action type: ${actionType}, Config: ${JSON.stringify(actionConfig)}`);
 
     if (FULL_SIZE_ACTIONS[actionType]) {
       try {
-        return await FULL_SIZE_ACTIONS[actionType](page, imageUrlOrContext, actionConfig, this);
+        const fullUrl = await FULL_SIZE_ACTIONS[actionType](page, imageUrlOrContext, actionConfig, this);
+        this.emitLog('info', `Provider ${this.name}: Full-size action '${actionType}' resulted in URL: ${fullUrl}`);
+        return fullUrl;
       } catch (e) {
-        this.emitLog('error', `Error during full-size action '${actionType}' for ${imageUrlOrContext}: ${e.message}`);
-        return imageUrlOrContext; // Fallback
+        this.emitLog('error', `Provider ${this.name}: Error during full-size action '${actionType}' for ${imageUrlOrContext}: ${e.message} - Stack: ${e.stack}`);
+        return typeof imageUrlOrContext === 'string' ? imageUrlOrContext : null; 
       }
     } else {
-      this.emitLog('warn', `Unknown full-size action type: ${actionType}`);
-      return imageUrlOrContext; // Fallback
+      this.emitLog('warn', `Provider ${this.name}: Unknown full-size action type: ${actionType}`);
+      return typeof imageUrlOrContext === 'string' ? imageUrlOrContext : null; 
     }
   }
 }

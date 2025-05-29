@@ -81,8 +81,10 @@ class PlaywrightCrawler extends EventEmitter {
       }
 
       // Initialize provider registry, passing this crawler as the emitter for providers
+      this.emit('log', 'debug', 'Initializing ProviderRegistry...');
       await this.providerRegistry.initialize(this); 
       const activeProviders = this.providerRegistry.getActiveProviders();
+      this.emit('log', 'debug', `ProviderRegistry initialized. Active providers count: ${activeProviders.length}`);
 
       if (activeProviders.length === 0) {
         this.emit('log', 'warn', 'No active providers. Check your configuration or --provider argument. Exiting.');
@@ -92,6 +94,7 @@ class PlaywrightCrawler extends EventEmitter {
 
       this.emit('log', 'debug', `Effective options: ${JSON.stringify(this.options, null, 2)}`);
       this.emit('log', 'info', `Active providers: ${activeProviders.map(p => p.name).join(', ')}`);
+      this.emit('log', 'debug', 'Entering provider processing loop...');
 
       await pathUtils.ensureDir(this.options.outputDir);
       const outputValidation = await validators.validateWritable(this.options.outputDir);
@@ -131,6 +134,7 @@ class PlaywrightCrawler extends EventEmitter {
       }
 
       for (const providerInstance of activeProviders) {
+        this.emit('log', 'debug', `Processing provider: ${providerInstance.name}`);
         if (this.stopRequested) {
           this.emit('log', 'info', 'Stopping provider processing loop due to stop request.');
           break;
@@ -156,9 +160,11 @@ class PlaywrightCrawler extends EventEmitter {
         try {
           // Pass `this` (crawler instance) to provider's initialize method
           if(typeof providerInstance.initialize === 'function') {
+            this.emit('log', 'debug', `Initializing provider: ${providerName}`);
             await providerInstance.initialize(this); 
           }
 
+          this.emit('log', 'debug', `Fetching image URLs from ${providerName} for query: "${this.options.query}"`);
           const imageUrls = await providerInstance.fetchImageUrls(
             this.options.query,
             { maxResults: providerMaxResults }, // Pass the calculated max for this provider
@@ -213,6 +219,7 @@ class PlaywrightCrawler extends EventEmitter {
   }
 
   async processImage(imageUrl, source, providerInstance) {
+    this.emit('log', 'debug', `Processing image URL: ${imageUrl} from provider ${source}`);
     if (this.stopRequested) {
       this.emit('log', 'debug', `Skipping processing of image ${imageUrl} due to stop request.`);
       return false;
@@ -226,11 +233,15 @@ class PlaywrightCrawler extends EventEmitter {
     let finalImageUrl = imageUrl;
     try {
       if (typeof providerInstance.getFullSizeImage === 'function') {
+        this.emit('log', 'debug', `Attempting to get full-size image for ${imageUrl} from ${source}`);
         const fullSizeUrl = await providerInstance.getFullSizeImage(this.page, imageUrl);
         if (fullSizeUrl && validators.validateUrl(fullSizeUrl).valid) {
           finalImageUrl = fullSizeUrl;
+          this.emit('log', 'debug', `Got full-size URL: ${finalImageUrl}`);
         } else if (fullSizeUrl) {
           this.emit('log', 'warn', `Provider ${source} returned invalid full-size URL: ${fullSizeUrl}. Using original: ${imageUrl}`);
+        } else {
+          this.emit('log', 'debug', `No full-size URL returned by provider ${source} for ${imageUrl}. Using original.`);
         }
       }
     } catch (err) {
@@ -244,11 +255,12 @@ class PlaywrightCrawler extends EventEmitter {
     // Validate against allowedFileTypes from options
     const allowedTypes = this.options.allowedFileTypes || DEFAULT_CONFIG.fileTypes;
     if (extension && !allowedTypes.includes(extension.substring(1))) {
-        this.emit('log', 'info', `Skipping image ${finalImageUrl} due to disallowed file type: ${extension}`);
+        this.emit('log', 'info', `Skipping image ${finalImageUrl} (type: ${extension}) from ${source} due to disallowed file type. Allowed: ${allowedTypes.join(', ')}`);
         this.skippedCount++;
         return false;
     }
     if (!extension || !allowedTypes.includes(extension.substring(1))) {
+        this.emit('log', 'debug', `Image ${finalImageUrl} has no or unsupported extension ('${extension}'). Defaulting extension.`);
         extension = `.${allowedTypes[0] || 'jpg'}`; // Default to first allowed type or jpg
     }
 
@@ -268,27 +280,30 @@ class PlaywrightCrawler extends EventEmitter {
         }
       }
 
+      this.emit('log', 'debug', `Attempting to navigate to image URL: ${finalImageUrl}`);
       const response = await this.page.goto(finalImageUrl, { waitUntil: 'commit', timeout: this.options.timeout || 60000 });
       if (!response || !response.ok()) {
         this.emit('log', 'warn', `Failed to fetch image ${finalImageUrl} from ${source}. Status: ${response ? response.status() : 'unknown'}`);
         this.skippedCount++;
         return false;
       }
+      this.emit('log', 'debug', `Successfully navigated to ${finalImageUrl}. Status: ${response.status()}`);
       const buffer = await response.body();
 
       if (this.options.minFileSize && buffer.length < this.options.minFileSize) {
-        this.emit('log', 'info', `Image ${finalImageName} from ${source} is too small (${buffer.length} bytes). Skipping.`);
+        this.emit('log', 'info', `Image ${finalImageName} from ${source} is too small (${buffer.length} bytes vs min ${this.options.minFileSize} bytes). Skipping.`);
         this.skippedCount++;
         return false;
       }
 
       const hash = await computeBufferHash(buffer);
       if (this.seenHashes.has(hash)) {
-        this.emit('log', 'info', `Skipping duplicate image by hash: ${finalImageName}`);
+        this.emit('log', 'info', `Skipping duplicate image by hash: ${finalImageName} (hash: ${hash})`);
         this.skippedCount++;
         return false;
       }
       
+      this.emit('log', 'debug', `Writing image ${finalImageName} to ${filePath}`);
       await fs.writeFile(filePath, buffer);
       this.seenHashes.add(hash);
       this.downloadedCount++;
