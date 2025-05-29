@@ -153,7 +153,28 @@ function getProviderConfig() {
   }
 
 // Handler for URL cleaning (remove parameters)
-async function url_cleaning(page, imageUrl, actionConfig, providerInstance) {
+async function url_cleaning(page, imageUrlOrContext, actionConfig, providerInstance) {
+  // Extract the URL if we received an object or context
+  let imageUrl = imageUrlOrContext;
+  if (typeof imageUrlOrContext !== 'string') {
+    // If we received an object, try to extract the URL from common properties
+    if (imageUrlOrContext && typeof imageUrlOrContext === 'object') {
+      if (imageUrlOrContext.fullSizeUrl) {
+        imageUrl = imageUrlOrContext.fullSizeUrl;
+      } else if (imageUrlOrContext.detailPageUrl) {
+        imageUrl = imageUrlOrContext.detailPageUrl;
+      } else if (imageUrlOrContext.thumbnailUrl) {
+        imageUrl = imageUrlOrContext.thumbnailUrl;
+      } else {
+        providerInstance.emitLog('warn', `Unable to extract URL from object. Object keys: ${Object.keys(imageUrlOrContext).join(', ')}`);
+        return null; // Cannot process without a URL
+      }
+    } else {
+      providerInstance.emitLog('warn', `Received non-string, non-object parameter: ${typeof imageUrlOrContext}`);
+      return null; // Cannot process without a URL
+    }
+  }
+
   providerInstance.emitLog('debug', `Full size action 'url_cleaning' for ${imageUrl}`);
   const { removeParams } = actionConfig;
   if (!removeParams || !removeParams.length) return imageUrl;
@@ -171,24 +192,66 @@ async function url_cleaning(page, imageUrl, actionConfig, providerInstance) {
 }
 
 // Handler for URL parameter decoding
-async function url_param_decode(page, imageUrl, actionConfig, providerInstance) {
+async function url_param_decode(page, imageUrlOrContext, actionConfig, providerInstance) {
+  // Extract the URL if we received an object or context
+  let imageUrl = imageUrlOrContext;
+  if (typeof imageUrlOrContext !== 'string') {
+    // If we received an object, try to extract the URL from common properties
+    if (imageUrlOrContext && typeof imageUrlOrContext === 'object') {
+      if (imageUrlOrContext.fullSizeUrl) {
+        imageUrl = imageUrlOrContext.fullSizeUrl;
+      } else if (imageUrlOrContext.detailPageUrl) {
+        imageUrl = imageUrlOrContext.detailPageUrl;
+      } else if (imageUrlOrContext.thumbnailUrl) {
+        imageUrl = imageUrlOrContext.thumbnailUrl;
+      } else {
+        providerInstance.emitLog('warn', `Unable to extract URL from object. Object keys: ${Object.keys(imageUrlOrContext).join(', ')}`);
+        return null; // Cannot process without a URL
+      }
+    } else {
+      providerInstance.emitLog('warn', `Received non-string, non-object parameter: ${typeof imageUrlOrContext}`);
+      return null; // Cannot process without a URL
+    }
+  }
+
   providerInstance.emitLog('debug', `Full size action 'url_param_decode' for ${imageUrl}`);
-  const { paramName, decode } = actionConfig;
+  const { paramName } = actionConfig;
   if (!paramName) return imageUrl;
 
   try {
     const urlObj = new URL(imageUrl);
-    const encodedParamValue = urlObj.searchParams.get(paramName);
-    if (encodedParamValue) {
-      const decodedUrl = decode ? decodeURIComponent(encodedParamValue) : encodedParamValue;
-      providerInstance.emitLog('info', `Extracted and decoded URL from param '${paramName}': ${decodedUrl}`);
-      return decodedUrl;
+    const encoded = urlObj.searchParams.get(paramName);
+    if (!encoded) {
+      providerInstance.emitLog('warn', `Parameter ${paramName} not found in URL: ${imageUrl}`);
+      return imageUrl;
     }
-    providerInstance.emitLog('warn', `Parameter '${paramName}' not found in ${imageUrl}`);
-    return imageUrl; // Fallback if param not found
+
+    // Try to decode it - handle both URI encoded values and base64
+    let decoded;
+    try {
+      decoded = decodeURIComponent(encoded);
+      providerInstance.emitLog('debug', `Decoded URI param ${paramName}: ${decoded}`);
+    } catch (e) {
+      // If URI decoding fails, try base64
+      try {
+        decoded = atob(encoded);
+        providerInstance.emitLog('debug', `Decoded base64 param ${paramName}: ${decoded}`);
+      } catch (e2) {
+        providerInstance.emitLog('warn', `Failed to decode param ${paramName} as URI or base64`);
+        return imageUrl;
+      }
+    }
+
+    // If the decoded value is a valid URL, return it
+    if (decoded.startsWith('http')) {
+      return decoded;
+    } else {
+      providerInstance.emitLog('warn', `Decoded value is not a valid URL: ${decoded}`);
+      return imageUrl;
+    }
   } catch (e) {
-    providerInstance.emitLog('error', `Error processing URL_PARAM_DECODE for ${imageUrl}: ${e.message}`);
-    return imageUrl; // Fallback on error
+    providerInstance.emitLog('warn', `Error decoding URL param ${imageUrl}: ${e.message}`);
+    return imageUrl;
   }
 }
 
