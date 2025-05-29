@@ -48,9 +48,15 @@
     },
     "freeimages": {
       "enabled": true,
+      "displayName": "FreeImages.com",
       "maxResults": 30,
-      "maxScrollsFreeImages": 10,
-      "scrollDelayFreeImages": 2500
+      "scrolling": {
+        "maxScrolls": 10,
+        "scrollDelay": 2500,
+        "noNewImagesRetries": 3,
+        "useAutoScroll": true
+      },
+      "notes": "Scraping-based provider using GenericPlaywrightProvider."
     },
     "wikimedia": { "enabled": true, "maxResults": 30 },
     "pixabay": { "enabled": true, "maxResults": 30 },
@@ -150,6 +156,18 @@
       "apiKey": "YOUR_DEPOSITPHOTOS_API_KEY",
       "maxResults": 30,
       "notes": "Requires an API key. API documentation needs to be requested from Depositphotos (https://depositphotos.com/api-suite.html)."
+    },
+    "littlevisuals": {
+      "enabled": false,
+      "displayName": "Little Visuals (Archive)",
+      "maxResults": 100, 
+      "notes": "Archive site, provides a fixed set of images. Search query is ignored."
+    },
+    "newoldstock": {
+      "enabled": false,
+      "displayName": "New Old Stock",
+      "maxResults": 50,
+      "notes": "Vintage photos from public archives. Configuration is a placeholder due to robots.txt blocking inspection and needs manual verification by the user."
     }
   },
   "logLevel": "INFO"

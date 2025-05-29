@@ -46,7 +46,7 @@ Here's a glimpse of the Image Crawler Electron application in action:
   - Deduplicate images by content hash (skips existing files)
 
 - **Web Mode**: Download images from multiple sources
-  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, FreeRangeStock, PublicDomainPictures.net, Reshot, Shutterstock (fetches watermarked previews), Adobe Stock (`adobestock`), Getty Images (`gettyimages`), Dreamstime.com (`dreamstime`), iStock (`istock`), 500px (`500px`), Stocksy (`stocksy`), Alamy (`alamy`), Bigstock (`bigstock`), Pond5 (`pond5`), and Depositphotos (`depositphotos`).
+  - Supports a wide range of providers: Google Images, Pixabay, Unsplash, Pexels, Bing, Flickr, DuckDuckGo, FreeImages, Wikimedia, StockSnap.io, FreeRangeStock, PublicDomainPictures.net, Reshot, Shutterstock (fetches watermarked previews), Adobe Stock (`adobestock`), Getty Images (`gettyimages`), Dreamstime.com (`dreamstime`), iStock (`istock`), 500px (`500px`), Stocksy (`stocksy`), Alamy (`alamy`), Bigstock (`bigstock`), Pond5 (`pond5`), Depositphotos (`depositphotos`), Little Visuals (`littlevisuals`), and New Old Stock (`newoldstock`).
   - Adobe Stock: Supports API key access for searching and retrieving watermarked previews. See `config.json.example` for API key configuration.
   - Getty Images: Supports API key access for searching and retrieving watermarked previews. See `config.json.example` for API key configuration.
   - Dreamstime.com: Setup for API access (requires API key and documentation from Dreamstime). See `config.json.example`.
@@ -57,6 +57,8 @@ Here's a glimpse of the Image Crawler Electron application in action:
   - Bigstock: Placeholder setup. API status unclear; may rely on scraping. See `config.json.example`.
   - Pond5: Setup for API access (requires API key; API documentation at https://www.pond5.com/api). Note: API might be for general media, check photo-specific endpoints. See `config.json.example`.
   - Depositphotos: Setup for API access (requires API key; API documentation at https://depositphotos.com/api-suite.html). See `config.json.example`.
+  - Little Visuals: Archive site, scrapes all available images. Search query is ignored. No API key required. See `config.json.example`.
+  - New Old Stock: Vintage photos from public archives. Configuration is a placeholder due to robots.txt and needs manual verification. See `config.json.example`.
   - Search by keyword with advanced filters (some providers)
   - Safe search (enabled by default where applicable)
   - Headless browser mode option for web crawling (configurable in CLI, default in GUI for some operations)
@@ -362,7 +364,7 @@ npx image-crawler web "sunset" --min-width 1920 --min-height 1080 --file-types j
 - `--file-types <types>`: Comma-separated list of file extensions (default: `jpg,jpeg,png,gif,webp`)
 - `--headless`: Run browser in headless mode (default: `true`)
 - `--timeout <ms>`: Browser operation timeout in milliseconds (default: `30000`)
-- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`, `stocksnap`, `shutterstock`, `adobestock`, `gettyimages`, `dreamstime`, `istock`, `500px`, `stocksy`, `alamy`, `bigstock`, `pond5`, `depositphotos`. Default is 'all' configured providers.
+- `--provider <name>`: Comma-separated list of image providers to use (e.g., `google`, `unsplash`, `bing,pexels`). Supported: `google`, `pixabay`, `unsplash`, `pexels`, `bing`, `flickr`, `duckduckgo`, `freeimages`, `wikimedia`, `stocksnap`, `shutterstock`, `adobestock`, `gettyimages`, `dreamstime`, `istock`, `500px`, `stocksy`, `alamy`, `bigstock`, `pond5`, `depositphotos`, `littlevisuals`, `newoldstock`. Default is 'all' configured providers.
 
 
 
