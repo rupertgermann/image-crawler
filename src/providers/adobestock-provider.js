@@ -1,17 +1,42 @@
-import axios from 'axios'; // Assuming axios is available
+import axios from 'axios';
 import BaseProvider from './base-provider.js';
+import GenericPlaywrightProvider from './generic-playwright-provider.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class AdobeStockProvider extends BaseProvider {
   constructor(providerConfig, emitter) {
-    super(providerConfig, emitter); // providerConfig here is from config.json (e.g., { enabled, apiKey })
+    super(providerConfig, emitter);
     this.name = 'AdobeStock';
-    this.apiKey = providerConfig.apiKey; // API key from config.json
+    this.apiKey = providerConfig.apiKey;
     this.apiBaseUrl = 'https://stock.adobe.io/Rest/Media/1/Search/Files';
-    this.xProduct = providerConfig.xProduct || 'ImageBulkDownloader/1.0'; // Use from config or default
-
-    // Note: Playwright-specific configs (like selectors for scraping) are typically loaded
-    // by GenericPlaywrightProvider using the separate adobestock.js config file.
-    // This class primarily handles API logic or orchestrates scraping if needed.
+    this.xProduct = providerConfig.xProduct || 'ImageBulkDownloader/1.0';
+    
+    // Initialize the scraping configuration
+    this.playwrightScrapingConfig = null;
+    this.loadPlaywrightConfig();
+  }
+  
+  /**
+   * Load the Playwright configuration for Adobe Stock
+   */
+  async loadPlaywrightConfig() {
+    try {
+      const configPath = path.join(__dirname, 'configs', 'playwright', 'adobestock.js');
+      const module = await import(configPath);
+      if (module.default) {
+        this.playwrightScrapingConfig = module.default;
+        this.emitLog('debug', `Successfully loaded Playwright config for Adobe Stock scraping`);
+      } else {
+        this.emitLog('warn', `Adobe Stock Playwright config file does not have a default export`);
+      }
+    } catch (error) {
+      this.emitLog('error', `Failed to load Adobe Stock Playwright config: ${error.message}`);
+    }
   }
 
   /**
@@ -25,7 +50,7 @@ class AdobeStockProvider extends BaseProvider {
    * @returns {Promise<Array<object>>} 
    *          A promise that resolves to an array of image information objects.
    */
-  async fetchImageUrls(query, options, page) { // eslint-disable-line no-unused-vars
+  async fetchImageUrls(query, options, page) {
     this.emitLog('info', `Fetching images for query: "${query}" with options: ${JSON.stringify(options)}`);
 
     if (this.apiKey) {
@@ -38,7 +63,7 @@ class AdobeStockProvider extends BaseProvider {
       
       const resultColumns = [
         'id', 'title', 'thumbnail_url', 'thumbnail_500_url', 'details_url', 
-        'comp_url', 'width', 'height', 'content_type', 'nb_downloads', // Added nb_downloads for potential sorting/filtering
+        'comp_url', 'width', 'height', 'content_type', 'nb_downloads',
         'premium_level_id' // To identify premium content
       ];
       const requestUrl = `${this.apiBaseUrl}?${searchParams.join('&')}&result_columns[]=${resultColumns.join(',')}`;
@@ -61,9 +86,6 @@ class AdobeStockProvider extends BaseProvider {
             title: item.title,
             thumbnailUrl: item.thumbnail_500_url || item.thumbnail_url, // Prefer 500px thumbnail
             detailPageUrl: item.details_url,
-            // comp_url is often a watermarked preview, suitable for display before licensing.
-            // For actual "full size" in the context of original, one might need licensing step via API.
-            // This is good enough for a preview/selection UI.
             fullSizeUrl: item.comp_url, 
             width: item.width,
             height: item.height,
@@ -85,12 +107,42 @@ class AdobeStockProvider extends BaseProvider {
         return [];
       }
     } else {
-      this.emitLog('warn', 'No API key provided for Adobe Stock. Scraping fallback mode is not yet fully implemented here.');
-      // Placeholder: In a full implementation, this might delegate to GenericPlaywrightProvider
-      // or use the 'page' object with configs loaded from adobestock.js (configs/playwright).
-      // For this task, we are just setting up the structure.
-      this.emitLog('info', 'Scraping mode would use GenericPlaywrightProvider logic with its config.');
-      return Promise.resolve([]);
+      this.emitLog('info', 'No API key provided for Adobe Stock. Using scraping fallback mode.');
+      
+      // Make sure we have the Playwright config loaded
+      if (!this.playwrightScrapingConfig) {
+        await this.loadPlaywrightConfig();
+      }
+      
+      if (!this.playwrightScrapingConfig) {
+        this.emitLog('error', 'Failed to load Adobe Stock Playwright config for scraping.');
+        return [];
+      }
+      
+      // Use GenericPlaywrightProvider for scraping
+      try {
+        const genericProvider = new GenericPlaywrightProvider(
+          this.config,
+          this.emitter,
+          this.playwrightScrapingConfig
+        );
+        
+        // Use the GenericPlaywrightProvider to fetch image URLs
+        const imageUrls = await genericProvider.fetchImageUrls(query, options, page);
+        this.emitLog('info', `Scraping mode: Found ${imageUrls.length} images from Adobe Stock.`);
+        
+        // Transform the URLs into the expected format
+        return imageUrls.map(url => ({
+          detailPageUrl: url,
+          thumbnailUrl: null, // Will be populated during getFullSizeImage
+          title: `Adobe Stock Image - ${query}`,
+          source: this.name,
+          provider: this.name
+        }));
+      } catch (error) {
+        this.emitLog('error', `Error in scraping fallback mode: ${error.message}`);
+        return [];
+      }
     }
   }
 
@@ -103,27 +155,55 @@ class AdobeStockProvider extends BaseProvider {
    * @param {import('playwright').Page} [page] - Optional Playwright page instance for scraping.
    * @returns {Promise<string|null>} A promise that resolves to the full-size image URL or null.
    */
-  async getFullSizeImage(imageInfo, page) { // eslint-disable-line no-unused-vars
-    this.emitLog('info', `Getting full-size image for item ID: ${imageInfo.id || 'N/A'}, Title: ${imageInfo.title}`);
+  async getFullSizeImage(imageInfo, page) {
+    this.emitLog('info', `Getting full-size image for item: ${imageInfo.title || 'Unknown title'}`);
 
     if (this.apiKey && imageInfo.fullSizeUrl) {
-      // In API mode, fullSizeUrl (comp_url) was already fetched during fetchImageUrls.
-      // This URL is typically for a watermarked composition.
-      // True full-size, non-watermarked images usually require a licensing step via API.
+      // In API mode, fullSizeUrl (comp_url) was already fetched during fetchImageUrls
       this.emitLog('info', `API mode: Returning pre-fetched comp URL as fullSizeUrl: ${imageInfo.fullSizeUrl}`);
-      return Promise.resolve(imageInfo.fullSizeUrl);
+      return imageInfo.fullSizeUrl;
     } else if (!this.apiKey && imageInfo.detailPageUrl) {
-      this.emitLog('warn', `Scraping mode for getFullSizeImage is not yet fully implemented for AdobeStock directly in this provider.`);
-      // Placeholder: This would normally involve using GenericPlaywrightProvider logic
-      // with configs from adobestock.js to scrape the detailPageUrl.
-      // For example:
-      // const gpp = new GenericPlaywrightProvider(this.config, this.emitter, this.playwrightScrapingConfig);
-      // return gpp.getFullSizeImage(page, imageInfo.detailPageUrl);
-      // For now, as per instructions:
-      return Promise.resolve(null);
+      this.emitLog('info', `Scraping mode: Getting full-size image from detail page: ${imageInfo.detailPageUrl}`);
+      
+      // Make sure we have the Playwright config loaded
+      if (!this.playwrightScrapingConfig) {
+        await this.loadPlaywrightConfig();
+      }
+      
+      if (!this.playwrightScrapingConfig) {
+        this.emitLog('error', 'Failed to load Adobe Stock Playwright config for scraping.');
+        return null;
+      }
+      
+      try {
+        // Use GenericPlaywrightProvider for scraping the detail page
+        const genericProvider = new GenericPlaywrightProvider(
+          this.config,
+          this.emitter,
+          this.playwrightScrapingConfig
+        );
+        
+        // Get the full-size image URL from the detail page
+        const fullSizeUrlFromGeneric = await genericProvider.getFullSizeImage(page, imageInfo.detailPageUrl);
+        
+        if (typeof fullSizeUrlFromGeneric === 'string' && fullSizeUrlFromGeneric.trim() !== '') {
+          this.emitLog('info', `Successfully extracted full-size image URL: ${fullSizeUrlFromGeneric}`);
+          return fullSizeUrlFromGeneric;
+        } else {
+          if (fullSizeUrlFromGeneric !== null) { // Log if it's not null but also not a valid string
+            this.emitLog('warn', `GenericProvider returned non-string or empty string for full-size URL. Type: ${typeof fullSizeUrlFromGeneric}, Value: '${String(fullSizeUrlFromGeneric)}'. Detail page: ${imageInfo.detailPageUrl}`);
+          } else {
+            this.emitLog('warn', `Failed to extract full-size image URL (GenericProvider returned null) from detail page: ${imageInfo.detailPageUrl}`);
+          }
+          return null;
+        }
+      } catch (error) {
+        this.emitLog('error', `Error getting full-size image in scraping mode: ${error.message}`);
+        return null;
+      }
     } else {
-      this.emitLog('warn', 'Cannot get full-size image: API key not present or fullSizeUrl/detailPageUrl missing in imageInfo.');
-      return Promise.resolve(null);
+      this.emitLog('warn', 'Cannot get full-size image: API key not present or detailPageUrl missing in imageInfo.');
+      return null;
     }
   }
 }

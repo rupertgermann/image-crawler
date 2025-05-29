@@ -49,27 +49,27 @@ This task list is derived from the `docs/new_provider_implementation_plan.md`. I
 - [x] Update `README.md`
 - [ ] Test provider thoroughly
 
-### 4. Implement Provider: Adobe Stock (`adobestock`)
-- [ ] Create provider file: `src/providers/adobestock-provider.js`
-- [ ] Implement `constructor` (handle API key)
-- [ ] Implement `fetchImageUrls`
-    - [ ] **API Mode**:
-        - [ ] Make API call (Search/Files endpoint)
-        - [ ] Parse response and map to `imageInfo`
-    - [ ] **Scraping Fallback Mode** (if no API key):
-        - [ ] Navigate to search page
-        - [ ] Identify CSS selectors for image items
-        - [ ] Extract metadata
-- [ ] Implement `getFullSizeImage`
-    - [ ] **API Mode**:
-        - [ ] Use `content_url` or similar for preview download
-    - [ ] **Scraping Fallback Mode**:
-        - [ ] Navigate to detail page
-        - [ ] Identify CSS selector for main preview image
-        - [ ] Extract watermarked preview URL
-- [ ] Update `config.json` and `config.json.example` (include `apiKey` field)
-- [ ] Update `README.md`
-- [ ] Test provider thoroughly (API mode and scraping fallback)
+### 4. ✅ Implement Provider: Adobe Stock (`adobestock`) - COMPLETED 2025-05-29
+- [x] Create provider file: `src/providers/adobestock-provider.js`
+- [x] Implement `constructor` (handle API key)
+- [x] Implement `fetchImageUrls`
+    - [x] **API Mode**:
+        - [x] Make API call (Search/Files endpoint)
+        - [x] Parse response and map to `imageInfo`
+    - [x] **Scraping Fallback Mode** (if no API key):
+        - [x] Navigate to search page
+        - [x] Identify CSS selectors for image items
+        - [x] Extract metadata
+- [x] Implement `getFullSizeImage`
+    - [x] **API Mode**:
+        - [x] Use `comp_url` for preview download
+    - [x] **Scraping Fallback Mode**:
+        - [x] Navigate to detail page
+        - [x] Identify CSS selector for main preview image (`#details-enlarged-image`)
+        - [x] Extract watermarked preview URL
+- [x] Update `config.json` and `config.json.example` (include `apiKey` field)
+- [x] Update `README.md`
+- [x] Test provider thoroughly (API mode and scraping fallback)
 
 ### 5. Implement Provider: Getty Images (`gettyimages`)
 - [ ] Create provider file: `src/providers/gettyimages-provider.js`

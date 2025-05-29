@@ -1,5 +1,45 @@
 # Progress Summary - Image Crawler Project
 
+## Adobe Stock Image Download Fix - Part 1: Update Playwright Config (2024-07-29)
+
+**Objective**: Resolve the issue of invalid URLs when downloading images from Adobe Stock by updating the Playwright configuration.
+
+**Implemented Features**:
+- Updated `src/providers/configs/playwright/adobestock.js`:
+    - Changed `fullSizeActions.selectors` from `['#details-enlarged-image']` to `['source[data-t=\"details-thumbnail-jpeg\"]']`.
+    - Changed `fullSizeActions.attribute` from `'src'` to `'srcset'`.
+- This targets the correct HTML element and attribute for the full-size image URL.
+
+**Encountered Errors & How We Fixed Them**:
+- The `write_to_file` tool failed to update `progress.md` because the file already exists. The plan is to use `replace_file_content` to insert the new progress.
+
+**Next Steps**:
+- Test the Adobe Stock provider thoroughly to ensure images are downloaded correctly.
+
+---
+
+## Adobe Stock Image Download Fix - Part 4: Robustness in `getFullSizeImage` (2024-07-29)
+
+**Objective**: Ensure `AdobeStockProvider.getFullSizeImage` (scraping mode) robustly handles return values from `GenericPlaywrightProvider` and only returns a string URL or `null`, preventing `[object Object]` errors.
+
+**Implemented Features**:
+- Modified `src/providers/adobestock-provider.js` in the `getFullSizeImage` method (scraping mode):
+    - Added explicit type checking for the URL returned by `genericProvider.getFullSizeImage()`.
+    - If a non-empty string is received, it's returned.
+    - If `null` is received, it's passed through.
+    - If any other type (e.g., an object) or an empty string is received, a warning is logged with details, and `null` is returned.
+- This change aims to prevent `[object Object]` from being processed by the download utility.
+
+**Encountered Errors & How We Fixed Them**:
+- **Issue**: Logs showed `Skipping invalid URL from AdobeStock: [object Object]`, indicating `getFullSizeImage` was returning an object instead of a string URL or `null`.
+- **Root Cause**: The value returned by `GenericPlaywrightProvider.getFullSizeImage` was not strictly a string or `null` in all cases, and `AdobeStockProvider` was passing this value through.
+- **Fix**: Added stricter type checking in `AdobeStockProvider.getFullSizeImage` to ensure it only returns a valid string URL or `null`.
+
+**Next Steps**:
+- Test the Adobe Stock provider again. If images are still not downloaded, examine the new warning logs from `getFullSizeImage` to understand what `GenericPlaywrightProvider` is returning, which will help pinpoint the issue within `GenericPlaywrightProvider` or the Playwright configuration itself.
+
+---
+
 ## Project Status: IN DEVELOPMENT - IMPROVING PROVIDER MANAGEMENT
 
 ### Dynamic Provider Dropdown Implementation (2025-05-24)

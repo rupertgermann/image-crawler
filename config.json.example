@@ -88,11 +88,12 @@
       "comment": "Free stock photos from Reshot.com"
     },
     "adobestock": {
-      "enabled": false,
+      "enabled": true,
       "displayName": "Adobe Stock",
-      "apiKey": "YOUR_ADOBE_STOCK_API_KEY",
+      "apiKey": "",
       "maxResults": 30,
-      "notes": "Requires an API key from Adobe Developer Console. Provides watermarked previews via API."
+      "comment": "Adobe Stock images (watermarked previews without API key). Add your API key for better results.",
+      "notes": "Works with or without an API key. Without an API key, it uses web scraping to download preview images."
     },
     "gettyimages": {
       "enabled": false,

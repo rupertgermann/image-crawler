@@ -1,27 +1,31 @@
 export default {
   name: 'AdobeStock', // Matches provider name
-  searchUrl: 'https://stock.adobe.com/search?k={query}', // Example search URL for scraping
+  searchUrl: 'https://stock.adobe.com/search?k={query}', // Search URL for scraping
   selectors: {
-    imageLinks: 'div.search-results a.item-link', // Placeholder
-    thumbnail: 'img.thumbnail-img', // Placeholder
-    title: 'span.title-span', // Placeholder
+    imageLinks: 'div.thumb-frame a', // Links to detail pages from thumb-frame
+    thumbnail: 'img', // Thumbnail images within the links
+    title: 'img', // Use image alt text as title
     // Consent buttons if any
-    consentButtons: [],
+    consentButtons: ['.evidon-banner-acceptbutton', '.accept-cookies-button'],
   },
   imageExtraction: {
-    type: 'attribute_collection', // Or 'link_collection' depending on structure
-    baseUrl: 'https://stock.adobe.com', // If URLs are relative
-    detailPageUrlAttribute: 'href',
-    thumbnailUrlAttribute: 'src',
-    titleAttribute: 'alt', // Or 'innerText' from a title element
+    type: 'link_collection', // We're collecting links to detail pages
+    baseUrl: 'https://stock.adobe.com', // For resolving relative URLs
+  },
+  scrolling: {
+    strategy: 'infinite_scroll', // Adobe Stock uses infinite scrolling
+    maxScrolls: 5, // Adjust as needed
+    scrollDelay: 2000, // Wait 2 seconds between scrolls
+    noNewImagesRetries: 2, // Stop after 2 attempts with no new images
   },
   fullSizeActions: {
     type: 'detail_page',
-    selectors: ['img.main-preview-image'], // Placeholder for full-size image on detail page
+    selectors: ['img[data-t="details-thumbnail-image"]'], // Target the img element for JPEG
     attribute: 'src',
-    waitStrategy: 'locator',
-    timeout: 15000,
-    navigationWaitUntil: 'domcontentloaded',
+    waitStrategy: 'locator', // Wait for the selector to be visible
+    waitDelay: 2000, // Wait 2 seconds after navigation before extracting
+    timeout: 15000, // Timeout for waiting on the image
+    navigationWaitUntil: 'domcontentloaded', // Wait until DOM is loaded
   },
   playwrightOptions: {
     useLocators: true,
